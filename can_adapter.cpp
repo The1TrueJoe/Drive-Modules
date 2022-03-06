@@ -115,6 +115,9 @@ void CAN_ADAPTER::printReceivedCANMessage() {
 
 }
 
+/** @brief Handling for invalid can commands */
+void CAN_ADAPTER::invalidCommand() { Serial.println("Invalid Command"); }
+
 // --------- EEPROM
 
 /**

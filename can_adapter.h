@@ -11,6 +11,8 @@ struct can_frame can_msg_out;
 uint32_t m_can_id = 0x000;
 uint8_t m_can_dlc = 8;
 
+uint32_t master_can_id = 0x001;
+
 MCP2515 mcp2515(10);
 
 // --------- EEPROM
@@ -27,5 +29,6 @@ public:
     void setupCAN();
     bool getCANMessage();
     void sendCANMessage(uint32_t id, uint8_t m_data[8]);
+    void invalidCommand();
     int hexToDec(uint8_t hex);
     
