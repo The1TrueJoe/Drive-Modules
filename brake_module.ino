@@ -84,12 +84,12 @@ void motorControlSequence() {
     switch (can_msg_in.data[2]) {
         case 0x0A:
             switch (can_msg_in.data[3]) {
-                case 0:
-                    resetMotorController(id); break;
-                case 1:
-                    enableMotorController(id); break;
-                case 2:
-                    postMotorControllerStatus(id); break;
+                case 0x00:
+                    resetMotorController(controller_id); break;
+                case 0x01:
+                    enableMotorController(controller_id); break;
+                case 0x02:
+                    postMotorControllerStatus(controller_id); break;
                 default:
                     invalidCommand(); break;
 
@@ -99,9 +99,9 @@ void motorControlSequence() {
 
         case 0x0C:
             switch (can_msg_in.data[3]) {
-                case 0:
+                case 0x00:
                     runForward(controller_id, hexToDec(can_msg_in.data[4])); break;
-                case 1:
+                case 0x01:
                     runBackward(controller_id, hexToDec(can_msg_in.data[4])); break;
                 default:
                     invalidCommand(); break;
@@ -254,7 +254,7 @@ void postMotorControllerStatus(uint8_t controller) {
     uint8_t status = getMotorControllerStatus(controller) ? 0x01 : 0x00;
     uint8_t message = { 0x0C, controller, 0x0A, 0x02, status, 0x00, 0x00, 0x00 };
 
-    sendCANMessage(master_can_id, message)
+    sendCANMessage(master_can_id, message);
 
 }
 
