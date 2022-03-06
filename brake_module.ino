@@ -73,6 +73,11 @@ void loop() {
     }
 }
 
+/**
+ * @brief Motor control can message parsing sequence
+ * 
+ */
+
 void motorControlSequence() {
     uint8_t controller_id = can_msg_in.data[1];
 
@@ -114,7 +119,7 @@ void motorControlSequence() {
 // --------- Motor Controllers
 
 /**
- * @brief 
+ * @brief Setup the motor controllers
  * 
  */
 
@@ -145,7 +150,7 @@ void setupMotorControllers() {
 /**
  * @brief Enables motor controller by setting the enable pin high
  * 
- * @param i 
+ * @param i Motor controller to enable
  * 
  * @return true If motor controller is enabled
  * @return false If motor controller is not enabled
@@ -254,10 +259,10 @@ void postMotorControllerStatus(uint8_t controller) {
 }
 
 /**
- * @brief 
+ * @brief Runs the motor controllers forwards
  * 
- * @param controller 
- * @param duty_cycle 
+ * @param controller Controller id
+ * @param duty_cycle Duty cycle
  */
 
 void runForward(uint8_t controller, int duty_cycle) {
@@ -276,10 +281,10 @@ void runForward(uint8_t controller, int duty_cycle) {
 }
 
 /**
- * @brief 
+ * @brief Runs the motor controllers backwards
  * 
- * @param controller 
- * @param duty_cycle 
+ * @param controller Controller id
+ * @param duty_cycle Duty cycle
  */
 
 void runBackward(int controller, int duty_cycle) {
