@@ -34,6 +34,8 @@ void standardModuleLoopHead() {
                     break;
             }
 
+            break;
+
         default:
             break;
 

@@ -60,7 +60,7 @@ void loop() {
         switch (can_msg_in.data[0]) {
             // 
             case 0x0C:
-                motorControlSequence();
+                motorControlSequence(); break;
                 
         
             default:
