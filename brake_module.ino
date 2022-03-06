@@ -200,21 +200,13 @@ bool getMotorControllerStatus(int i) {
             Serial.printn("Motor Controller 1: Current Status is Enabled");
             return true;
             
-        } else {
-            Serial.printn("Motor Controller 1: Current Status is Disabled");
-            return false;
-
-        }
+        } 
 
     } else if (i == 2) {
         if (digitalRead(CTRL2_ENABLE) == 1) {
             Serial.printn("Motor Controller 2: Current Status is Enabled");
             return true;
             
-        } else {
-            Serial.printn("Motor Controller 2: Current Status is Disabled");
-            return false;
-
         }
         
     } else {
@@ -222,4 +214,8 @@ bool getMotorControllerStatus(int i) {
         return false;
 
     }
+
+    Serial.printn("Motor Controller " + str(1) + ": Current Status is Disabled");
+    return false;
+
 }
