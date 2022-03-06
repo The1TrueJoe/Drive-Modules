@@ -58,29 +58,10 @@ void loop() {
         standardModuleLoopHead();
 
         switch (can_msg_in.data[0]) {
+            // 
             case 0x0C:
-                int id = can_msg_in.data[1];
-
-                switch (can_msg_in.data[2]) {
-                    case 0:
-                        resetMotorController(id);
-                        break;
-
-                    case 1:
-                        enableMotorController(id);
-                        break;
-
-                    case 2:
-                        postMotorControllerStatus(id);
-                        break;
-
-                    default:
-
-                        break;
-
-                }
-
-                break;
+                motorControlSequence();
+                
         
             default:
                 break;
@@ -90,6 +71,44 @@ void loop() {
         standardModuleLoopTail();
 
     }
+}
+
+void motorControlSequence() {
+    uint8_t controller_id = can_msg_in.data[1];
+
+    switch (can_msg_in.data[2]) {
+        case 0x0A:
+            switch (can_msg_in.data[3]) {
+                case 0:
+                    resetMotorController(id); break;
+                case 1:
+                    enableMotorController(id); break;
+                case 2:
+                    postMotorControllerStatus(id); break;
+                default:
+                    invalidCommand(); break;
+
+            }
+            
+            break;
+
+        case 0x0C:
+            switch (can_msg_in.data[3]) {
+                case 0:
+                    runForward(controller_id, hexToDec(can_msg_in.data[4])); break;
+                case 1:
+                    runBackward(controller_id, hexToDec(can_msg_in.data[4])); break;
+                default:
+                    invalidCommand(); break;
+
+            }
+
+            break;
+
+        default:
+            invalidCommand(); break;
+    }
+
 }
 
 // --------- Motor Controllers
@@ -132,13 +151,13 @@ void setupMotorControllers() {
  * @return false If motor controller is not enabled
  */
 
-bool enableMotorController(int i) { 
-    if (i == 1) {
+bool enableMotorController(uint8_t i) { 
+    if (i == 0x01) {
         Serial.println("Motor Controller 1: Enabled");
         digitalWrite(CTRL1_ENABLE, HIGH);
         return true; 
         
-    } else if (i == 2) {
+    } else if (i == 0x02) {
         Serial.println("Motor Controller 2: Enabled");
         digitalWrite(CTRL2_ENABLE, HIGH);
         return true;
@@ -159,8 +178,8 @@ bool enableMotorController(int i) {
  * @return false If motor controller is not reset
  */
 
-bool resetMotorController(int i) {
-     if (i == 1) {
+bool resetMotorController(uint8_t i) {
+     if (i == 0x01) {
         // Write Controller 1 Low
         Serial.println("Motor Controller 1: Reset");
         digitalWrite(CTRL1_ENABLE, LOW);
@@ -169,7 +188,7 @@ bool resetMotorController(int i) {
 
         return true; 
         
-    } else if (i == 2) {
+    } else if (i == 0x02) {
         // Write Controller 2 Low
         Serial.println("Motor Controller 2: Reset");
         digitalWrite(CTRL2_ENABLE, LOW);
@@ -194,15 +213,15 @@ bool resetMotorController(int i) {
  * @return false Motor is disabled
  */
 
-bool getMotorControllerStatus(int i) {
-    if (i == 1) {
+bool getMotorControllerStatus(uint8_t i) {
+    if (i == 0x01) {
         if (digitalRead(CTRL1_ENABLE) == 1) {
             Serial.printn("Motor Controller 1: Current Status is Enabled");
             return true;
             
         } 
 
-    } else if (i == 2) {
+    } else if (i == 0x02) {
         if (digitalRead(CTRL2_ENABLE) == 1) {
             Serial.printn("Motor Controller 2: Current Status is Enabled");
             return true;
@@ -215,7 +234,65 @@ bool getMotorControllerStatus(int i) {
 
     }
 
-    Serial.printn("Motor Controller " + str(1) + ": Current Status is Disabled");
+    Serial.printn("Motor Controller " + str(i) + ": Current Status is Disabled");
     return false;
 
+}
+
+/**
+ * @brief Post motor controller status to the bus
+ * 
+ * @param controller Controller id
+ */
+
+void postMotorControllerStatus(uint8_t controller) {
+    uint8_t status = getMotorControllerStatus(controller) ? 0x01 : 0x00;
+    uint8_t message = { 0x0C, controller, 0x0A, 0x02, status, 0x00, 0x00, 0x00 };
+
+    sendCANMessage(master_can_id, message)
+
+}
+
+/**
+ * @brief 
+ * 
+ * @param controller 
+ * @param duty_cycle 
+ */
+
+void runForward(uint8_t controller, int duty_cycle) {
+    if (controller == 1) {
+        Serial.println("Motor Controller 1: Forward Speed " + str(duty_cycle));
+        analogWrite(CTRL1_R_PWM, duty_cycle);
+
+    } else if (controller == 2) {
+        Serial.println("Motor Controller 2: Forward Speed " + str(duty_cycle));
+        analogWrite(CTRL2_R_PWM, duty_cycle);
+        
+    } else {
+        Serial.println("Error: Invalid Motor ID While Setting Speed: " + str(i));
+
+    }
+}
+
+/**
+ * @brief 
+ * 
+ * @param controller 
+ * @param duty_cycle 
+ */
+
+void runBackward(int controller, int duty_cycle) {
+    if (controller == 1) {
+        Serial.println("Motor Controller 1: Reverse Speed " + str(duty_cycle));
+        analogWrite(CTRL1_L_PWM, duty_cycle);
+
+    } else if (controller == 1) {
+        Serial.println("Motor Controller 2: Reverse Speed " + str(duty_cycle));
+        analogWrite(CTRL2_L_PWM, duty_cycle);
+        
+    } else {
+        Serial.println("Error: Invalid Motor ID While Setting Speed: " + str(i));
+
+    }
 }
