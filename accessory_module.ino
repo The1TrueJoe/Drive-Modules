@@ -246,7 +246,7 @@ bool checkRelay(uint8_t id) {
 
 void postRelayStatus(uint8_t id) {
     uint8_t status = checkRelay(id) ? 0x01 : 0x00;
-    uint8_t message = { 0x0C, id, 0x0A, 0x02, status, 0x00, 0x00, 0x00 };
+    uint8_t message[can_msg_in.dlc] = { 0x0C, id, 0x0A, 0x02, status, 0x00, 0x00, 0x00 };
 
     sendCANMessage(master_can_id, message);
 
