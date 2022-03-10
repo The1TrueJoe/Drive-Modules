@@ -2,10 +2,10 @@
 
 // --------- CAN
 
-/** @brief Setup the CAN transciver */
+/** @brief Setup the CAN transceiver */
 void CAN_ADAPTER::setupCAN() {
     // Get address from eeprom
-    Serial.println("CAN Transciever: Loading CAN Address");
+    Serial.println("CAN Transceiver: Loading CAN Address");
     
     if (m_can_id == 0x000) {
         uint32_t new_addr = getCANAddress();
@@ -19,8 +19,8 @@ void CAN_ADAPTER::setupCAN() {
         }
     }
 
-    // Log intit
-    Serial.println("CAN Transciever: Init Starting");
+    // Log init
+    Serial.println("CAN Transceiver: Init Starting");
 
     // Reset and set
     mcp2515.reset();
@@ -28,7 +28,7 @@ void CAN_ADAPTER::setupCAN() {
     mcp2515.setNormalMode();
 
     // Log done
-    Serial.println("CAN Transciever: Done");
+    Serial.println("CAN Transceiver: Done");
 
 }
 
