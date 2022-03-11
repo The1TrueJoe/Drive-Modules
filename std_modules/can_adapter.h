@@ -2,8 +2,7 @@
 #include <Arduino.h>
 
 // --------- Can Interface
-#include <SPI.h>
-#include <mcp2515.h>
+#include "mcp2515.h"
 
 struct can_frame can_msg_in;
 struct can_frame can_msg_out;
