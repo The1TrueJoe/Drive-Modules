@@ -73,11 +73,9 @@ void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     }
 
     // Start log
-    Serial.print("CAN Transceiver: Send Message ID: ");
+    Serial.print("CAN-TX: (");
     Serial.print(can_msg_out.id, HEX);
-    Serial.print(" DLC: ");
-    Serial.print(can_msg_out.dlc, HEX);
-    Serial.print(" Msg: ");
+    Serial.print(") ");
 
     // Print data
     for (int i = 0; i < can_msg_out.dlc; i++) {
@@ -97,11 +95,9 @@ void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 /** @brief Print out the received can frame*/
 void CAN_ADAPTER::printReceivedCANMessage() {
     // Start message
-    Serial.print("CAN Transceiver: Received Message ID: ") +
-    Serial.print(can_msg_in.id, HEX);
-    Serial.print(" DLC: ");
-    Serial.print(can_msg_in.dlc, HEX);
-    Serial.print(" Msg: ");
+    Serial.print("CAN-RX: (");
+    Serial.print(can_msg_out.id, HEX);
+    Serial.print(") ");
 
     // Print data
     for (int i = 0; i < can_msg_in.dlc; i++) {
