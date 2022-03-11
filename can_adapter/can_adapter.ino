@@ -1,5 +1,5 @@
 #include "can_adapter.h"
-#include <LiquidCrystal.h>
+#include "Adafruit_LiquidCrystal.h"
 
 #define Register_Select 7
 #define Enable 6
@@ -8,7 +8,7 @@
 #define D6 3
 #define D7 2
 
-LiquidCrystal lcd(Register_Select, Enable, D4, D5, D6, D7);
+Adafruit_LiquidCrystal lcd(Register_Select, Enable, D4, D5, D6, D7);
 
 void setup() {
     // Init serial port
