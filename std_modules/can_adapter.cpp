@@ -2,10 +2,10 @@
 
 // --------- CAN
 
-/** @brief Setup the CAN transciver */
+/** @brief Setup the CAN transceiver */
 void CAN_ADAPTER::setupCAN() {
     // Get address from eeprom
-    Serial.println("CAN Transciever: Loading CAN Address");
+    Serial.println("CAN Transceiver: Loading CAN Address");
     
     if (m_can_id == 0x000) {
         uint32_t new_addr = getCANAddress();
@@ -19,8 +19,8 @@ void CAN_ADAPTER::setupCAN() {
         }
     }
 
-    // Log intit
-    Serial.println("CAN Transciever: Init Starting");
+    // Log init
+    Serial.println("CAN Transceiver: Init Starting");
 
     // Reset and set
     mcp2515.reset();
@@ -28,7 +28,7 @@ void CAN_ADAPTER::setupCAN() {
     mcp2515.setNormalMode();
 
     // Log done
-    Serial.println("CAN Transciever: Done");
+    Serial.println("CAN Transceiver: Done");
 
 }
 
@@ -73,11 +73,9 @@ void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     }
 
     // Start log
-    Serial.print("CAN Transceiver: Send Message ID: ");
+    Serial.print("CAN-TX: (");
     Serial.print(can_msg_out.id, HEX);
-    Serial.print(" DLC: ");
-    Serial.print(can_msg_out.dlc, HEX);
-    Serial.print(" Msg: ");
+    Serial.print(") ");
 
     // Print data
     for (int i = 0; i < can_msg_out.dlc; i++) {
@@ -97,11 +95,9 @@ void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 /** @brief Print out the received can frame*/
 void CAN_ADAPTER::printReceivedCANMessage() {
     // Start message
-    Serial.print("CAN Transceiver: Received Message ID: ") +
-    Serial.print(can_msg_in.id, HEX);
-    Serial.print(" DLC: ");
-    Serial.print(can_msg_in.dlc, HEX);
-    Serial.print(" Msg: ");
+    Serial.print("CAN-RX: (");
+    Serial.print(can_msg_out.id, HEX);
+    Serial.print(") ");
 
     // Print data
     for (int i = 0; i < can_msg_in.dlc; i++) {

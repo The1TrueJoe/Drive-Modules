@@ -2,10 +2,10 @@
 
 // --------- Pin Definitions
 
-#define RIGHT_TAIL_RELAY
-#define LEFT_TAIL_RELAY
-#define HEAD_LIGHT_RELAY
-#define HORN_RELAY
+#define RIGHT_TAIL_RELAY 1
+#define LEFT_TAIL_RELAY 2
+#define HEAD_LIGHT_RELAY 3
+#define HORN_RELAY 4
 
 // Relay IDs
 const uint8_t right_tail_id = 0x00;

@@ -1,5 +1,6 @@
-# .vscode
+# IDEs
 .vscode/
+.idea/
 
 # .ds_store
 .DS_STORE
