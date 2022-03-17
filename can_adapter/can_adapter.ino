@@ -10,6 +10,11 @@
 
 Adafruit_LiquidCrystal lcd(Register_Select, Enable, D4, D5, D6, D7);
 
+/**
+ * @brief Main Arduino Setup
+ * 
+ */
+
 void setup() {
     // Init serial port
     Serial.begin(115200);
@@ -28,6 +33,11 @@ void setup() {
 
 }
 
+/**
+ * @brief Main Arduino Loop
+ * 
+ */
+
 void loop() {
     getCANMessage();
 
@@ -41,8 +51,14 @@ void loop() {
             display(drive_com_msg);
 
         }
-    }
+    }m
 }
+
+/**
+ * @brief Print a message to the drive computer LCD
+ * 
+ * @param drive_com_msg message to display ("L{line num}: {message}")
+ */
 
 void display(String drive_com_msg) {
     drive_com_msg = drive_com_msg.replace("Display: ", "");
@@ -71,6 +87,12 @@ void display(String drive_com_msg) {
 
     }
 }
+
+/**
+ * @brief Sends a message through the CAN Adapter
+ * 
+ * @param drive_com_msg Message to send (8x bytes separated by spaces)
+ */
 
 void adapterSendMessage(String drive_com_msg) {
     // Remove message header
