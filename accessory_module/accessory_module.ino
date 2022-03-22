@@ -73,101 +73,110 @@ void setup() {
  */
 
 void loop() {
-    if (getCANMessage()) {
-        standardModuleLoopHead();
+    // Periodic updates
+    postRelays();
+    delay(10000);
 
-        switch (can_msg_in.data[0]) {
-            case 0x0A:
-                switch (can_msg_in.data[2]) {
-                    case 0x01:
-                        openRelay(can_msg_in.data[1]);
-                        break;
+}
 
-                    case 0x02:
-                        closeRelay(can_msg_in.data[1]);
-                        continue_loop = false;
-                        break;
+/**
+ * @brief CAN Message Processing
+ * 
+ */
 
-                    default:
-                        break;
+void canLoop() {
+    standardModuleLoopHead();
 
-                }
+    switch (can_msg_in.data[0]) {
+        case 0x0A:
+            switch (can_msg_in.data[2]) {
+                case 0x01:
+                    openRelay(can_msg_in.data[1]);
+                    break;
 
-                break;
-                
+                case 0x02:
+                    closeRelay(can_msg_in.data[1]);
+                    continue_loop = false;
+                    break;
 
-            case 0x0B:
-                switch (can_msg_in.data[1]) {
-                    case 0x0B:
-                        int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
-                        int id = can_msg_in.data[2];
+                default:
+                    break;
 
-                        while (continue_loop) {
-                            closeRelay(id);
-                            delay(interval);
-                            openRelay(id);
+            }
 
-                        }
+            break;
+            
 
-                        break;
+        case 0x0B:
+            switch (can_msg_in.data[1]) {
+                case 0x0B:
+                    int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
+                    int id = can_msg_in.data[2];
 
-
-                    case 0x01:
-                        int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
-
-                        closeRelay(horn_id);
+                    while (continue_loop) {
+                        closeRelay(id);
                         delay(interval);
-                        openRelay(horn_id);
+                        openRelay(id);
 
-                        break;
-                        
-                    default:
-                        break;
+                    }
 
-                }
-
-                break;
+                    break;
 
 
-            case 0x0C:
-                switch (can_msg_in.data[1]) {
-                    case 0x0A:
-                        postRelayStatus(can_msg_in.data[2]);
-                        break;
+                case 0x01:
+                    int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
 
-                    case 0x0E:
-                        switch (can_msg_in.data[2]) {
-                            case 0x01:
-                                def_blink_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
-                                break;
+                    closeRelay(horn_id);
+                    delay(interval);
+                    openRelay(horn_id);
 
-                            case 0x02:
-                                def_horn_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
-                                break;
+                    break;
+                    
+                default:
+                    break;
 
-                            default:
-                                break;
-                                
-                        }
+            }
 
-                        break;
+            break;
 
-                    default:
-                        break;
 
-                }
+        case 0x0C:
+            switch (can_msg_in.data[1]) {
+                case 0x0A:
+                    postRelayStatus(can_msg_in.data[2]);
+                    break;
 
-                break;
-                
-            default:
-                break;
+                case 0x0E:
+                    switch (can_msg_in.data[2]) {
+                        case 0x01:
+                            def_blink_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
+                            break;
 
-        }
+                        case 0x02:
+                            def_horn_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
+                            break;
 
-        standardModuleLoopTail();
+                        default:
+                            break;
+                            
+                    }
+
+                    break;
+
+                default:
+                    break;
+
+            }
+
+            break;
+            
+        default:
+            break;
 
     }
 
+    standardModuleLoopTail();
+    
 }
 
 // --------- Pedals 
@@ -360,5 +369,16 @@ void postRelayStatus(uint8_t id) {
 
     // Send Message
     sendCANMessage(m_can_id, message);
+
+}
+
+/** @brief Post all relay statuses */
+void postRelays() {
+    postRelayStatus(right_tail_id);
+    postRelayStatus(left_tail_id);
+    postRelayStatus(tail_light_id);
+    postRelayStatus(head_light_id);
+    postRelayStatus(horn_id);
+    postRelayStatus(rear_buzz_id);
 
 }
