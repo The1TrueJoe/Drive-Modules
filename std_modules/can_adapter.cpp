@@ -3,7 +3,7 @@
 // --------- CAN
 
 /** @brief Setup the CAN transceiver */
-void CAN_ADAPTER::setupCAN() {
+void setupCAN(int CS_PIN) {
     // Get address from eeprom
     Serial.println("CAN Transceiver: Loading CAN Address");
     
@@ -22,6 +22,9 @@ void CAN_ADAPTER::setupCAN() {
     // Log init
     Serial.println("CAN Transceiver: Init Starting");
 
+    // Init
+    mcp2515 = new MCP2515(CS_PIN);
+
     // Reset and set
     mcp2515.reset();
     mcp2515.setBitrate(CAN_125KBPS);
@@ -39,7 +42,7 @@ void CAN_ADAPTER::setupCAN() {
  * @return false If message is invalid or id's do not match
  */
 
-bool CAN_ADAPTER::getCANMessage() {
+bool getCANMessage() {
     if (mcp2515.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
         if (can_msg_in.can_id == m_can_id) {
             printReceivedCANMessage();
@@ -59,7 +62,7 @@ bool CAN_ADAPTER::getCANMessage() {
  * @param m_data Data to send to the CAN device
  */
 
-void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
+void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     // Assign ID
     can_msg_out.can_id = id;
 
@@ -93,7 +96,7 @@ void CAN_ADAPTER::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 }
 
 /** @brief Print out the received can frame*/
-void CAN_ADAPTER::printReceivedCANMessage() {
+void printReceivedCANMessage() {
     // Start message
     Serial.print("CAN-RX: (");
     Serial.print(can_msg_out.id, HEX);
@@ -112,7 +115,7 @@ void CAN_ADAPTER::printReceivedCANMessage() {
 }
 
 /** @brief Handling for invalid can commands */
-void CAN_ADAPTER::invalidCommand() { Serial.println("Invalid Command"); }
+void invalidCommand() { Serial.println("Invalid Command"); }
 
 // --------- EEPROM
 
@@ -123,7 +126,7 @@ void CAN_ADAPTER::invalidCommand() { Serial.println("Invalid Command"); }
  * @param value Value
  */
 
-void CAN_ADAPTER::writeEEPROM32bit(int address, uint32_t value) {
+void writeEEPROM32bit(int address, uint32_t value) {
     byte one = (value & 0xFF);
     byte two = ((value >> 8) & 0xFF);
     byte three = ((value >> 16) & 0xFF);
@@ -144,7 +147,7 @@ void CAN_ADAPTER::writeEEPROM32bit(int address, uint32_t value) {
  * @return uint32_t 32 bit value 
  */
 
-uint32_t CAN_ADAPTER::readEEPROM32bit(int address) {
+uint32_t readEEPROM32bit(int address) {
     uint32_t four = EEPROM.read(address);
     uint32_t three = EEPROM.read(address + 1);
     uint32_t two = EEPROM.read(address + 2);
@@ -160,7 +163,7 @@ uint32_t CAN_ADAPTER::readEEPROM32bit(int address) {
  * @return uint32_t CAN Address
  */
 
-uint32_t CAN_ADAPTER::getCANAddress() { return readEEPROM32bit(0); }
+uint32_t getCANAddress() { return readEEPROM32bit(0); }
 
 /**
  * @brief Set the new can address in eeprom
@@ -168,7 +171,7 @@ uint32_t CAN_ADAPTER::getCANAddress() { return readEEPROM32bit(0); }
  * @param new_can_addr New can address
  */
 
-void CAN_ADAPTER::setCANAddress(uint32_t new_can_addr) { 
+void setCANAddress(uint32_t new_can_addr) { 
     m_can_id = new_can_addr;
     writeEEPROM32bit(0, new_can_addr);
     
@@ -178,7 +181,7 @@ void CAN_ADAPTER::setCANAddress(uint32_t new_can_addr) {
 
 // --------- Utility
 
-int CAN_ADAPTER::hexToDec(uint8_t hex) {
+int hexToDec(uint8_t hex) {
    
 
 }

@@ -12,21 +12,39 @@
  * 
  */
 
-// --------- Pin Definitions
+// --------- Definitions
 
-// Motor Controller 1
-#define CTRL1_L_PWM 9
-#define CTRL1_R_PWM 6
-#define CTRL1_ENABLE 8
+// Steering Motor Ctrl
+#define STR_L_PWM 9
+#define STR_R_PWM 6
+#define STR_ENABLE 4
 
-// Motor Controller 2
-#define CTRL2_L_PWM 5
-#define CTRL2_R_PWM 3
-#define CTRL2_ENABLE 7
+#define STR_POT A5
+
+const uint8_t str_id = 0x01;
+
+// Brake Motor Ctrl
+#define BRK_L_PWM 5
+#define BRK_R_PWM 10
+#define BRK_ENABLE 7
+
+#define BRK_ENC 2
+
+#define BRK_PEDAL A4
+
+const uint8_t brk_id = 0x02;
+
+volatile long brk_enc_ticks = 0;
+
+// CAN
+#define CAN_CS 8
+#define CAN_INT 3
 
 // --------- Lib
 
 #include <module.h>
+
+
 
 // --------- Setup Functions
 
@@ -37,12 +55,8 @@
 
 void setup() {
     // Standard module setup
-    standardModuleSetup();
-
-    // Setup the motor controllers
-    setupMotorControllers();
-
-    
+    standardModuleSetup(CAN_CS);
+    attachInterupt(CAN_INT, canLoop, FALLING);
 
 }
 
@@ -54,250 +68,322 @@ void setup() {
  */
 
 void loop() {
-    if (getCANMessage()) {
-        standardModuleLoopHead();
+    // Periodic
+    if (checkBrakes()) { postBrakeEngaged(); }
 
-        switch (can_msg_in.data[0]) {
-            // 
-            case 0x0C:
-                motorControlSequence(); break;
-                
+}
+
+void canLoop() {
+    standardModuleLoopHead();
         
-            default:
-                break;
 
-        }
-
-        standardModuleLoopTail();
-
-    }
+    standardModuleLoopTail();
 }
 
+// --------- Brakes
+
 /**
- * @brief Motor control can message parsing sequence
+ * @brief 
  * 
  */
 
-void motorControlSequence() {
-    uint8_t controller_id = can_msg_in.data[1];
+void setupBrakeMotor() {
+    // Brake Motor Ctrl PinMode
+    Serial.println("Brake Motor Ctrl: Setting Pin Mode");
+    pinMode(BRK_ENABLE, OUTPUT);
+    pinMode(BRK_L_PWM, OUTPUT);
+    pinMode(BRK_R_PWM, OUTPUT);
 
-    switch (can_msg_in.data[2]) {
-        case 0x0A:
-            switch (can_msg_in.data[3]) {
-                case 0x00:
-                    resetMotorController(controller_id); break;
-                case 0x01:
-                    enableMotorController(controller_id); break;
-                case 0x02:
-                    postMotorControllerStatus(controller_id); break;
-                default:
-                    invalidCommand(); break;
+    // Reset Control
+    resetBrakeMotor();
 
-            }
-            
-            break;
-
-        case 0x0C:
-            switch (can_msg_in.data[3]) {
-                case 0x00:
-                    runForward(controller_id, hexToDec(can_msg_in.data[4])); break;
-                case 0x01:
-                    runBackward(controller_id, hexToDec(can_msg_in.data[4])); break;
-                default:
-                    invalidCommand(); break;
-
-            }
-
-            break;
-
-        default:
-            invalidCommand(); break;
-    }
-
-}
-
-// --------- Motor Controllers
-
-/**
- * @brief Setup the motor controllers
- * 
- */
-
-void setupMotorControllers() {
-    // Motor Controller 1 PinMode
-    Serial.println("Motor Controller 1: Setting Pin Mode");
-    pinMode(CTRL1_ENABLE, OUTPUT);
-    pinMode(CTRL1_L_PWM, OUTPUT);
-    pinMode(CTRL1_R_PWM, OUTPUT);
-
-    // Reset controller
-    resetMotorController1();
-
-    // Motor Controller 2 PinMode
-    Serial.println("Motor Controller 2: Setting Pin Mode");
-    pinMode(CTRL2_ENABLE, OUTPUT);
-    pinMode(CTRL2_L_PWM, OUTPUT);
-    pinMode(CTRL2_R_PWM, OUTPUT);
-
-    // Reset controller
-    resetMotorController2();
-
-    // Post update
-    Serial.println("Motor Controllers: Setup Complete");
+    // Post Status
+    postBrakeEnabled();
+    postBrakeEngaged();
+    postBrakeTicks();
 
 }
 
 /**
- * @brief Enables motor controller by setting the enable pin high
+ * @brief 
  * 
- * @param i Motor controller to enable
- * 
- * @return true If motor controller is enabled
- * @return false If motor controller is not enabled
  */
 
-bool enableMotorController(uint8_t i) { 
-    if (i == 0x01) {
-        Serial.println("Motor Controller 1: Enabled");
-        digitalWrite(CTRL1_ENABLE, HIGH);
-        return true; 
-        
-    } else if (i == 0x02) {
-        Serial.println("Motor Controller 2: Enabled");
-        digitalWrite(CTRL2_ENABLE, HIGH);
-        return true;
-        
-    } else {
-        Serial.println("Error: Invalid Motor ID While Enabling: " + str(i));
-        return false;
-
-    }
-}
-
-/**
- * @brief Resets motor controllers
- * 
- * @param i Motor controller to reset
- * 
- * @return true If motor controller is reset
- * @return false If motor controller is not reset
- */
-
-bool resetMotorController(uint8_t i) {
-     if (i == 0x01) {
-        // Write Controller 1 Low
-        Serial.println("Motor Controller 1: Reset");
-        digitalWrite(CTRL1_ENABLE, LOW);
-        digitalWrite(CTRL1_L_PWM, LOW);
-        digitalWrite(CTRL1_R_PWM, LOW);
-
-        return true; 
-        
-    } else if (i == 0x02) {
-        // Write Controller 2 Low
-        Serial.println("Motor Controller 2: Reset");
-        digitalWrite(CTRL2_ENABLE, LOW);
-        digitalWrite(CTRL2_L_PWM, LOW);
-        digitalWrite(CTRL2_R_PWM, LOW);
-
-        return true;
-        
-    } else {
-        Serial.println("Error: Invalid Motor ID While Resetting: " + str(i));
-        return false;
-
-    }
-}
-
-/**
- * @brief Get the Motor Controller Status
- * 
- * @param i Motor ID
- * 
- * @return true Motor is enabled
- * @return false Motor is disabled
- */
-
-bool getMotorControllerStatus(uint8_t i) {
-    if (i == 0x01) {
-        if (digitalRead(CTRL1_ENABLE) == 1) {
-            Serial.printn("Motor Controller 1: Current Status is Enabled");
-            return true;
-            
-        } 
-
-    } else if (i == 0x02) {
-        if (digitalRead(CTRL2_ENABLE) == 1) {
-            Serial.printn("Motor Controller 2: Current Status is Enabled");
-            return true;
-            
-        }
-        
-    } else {
-        Serial.println("Error: Invalid Motor ID While Checking Status: " + str(i));
-        return false;
-
-    }
-
-    Serial.printn("Motor Controller " + str(i) + ": Current Status is Disabled");
-    return false;
+void resetBrakeMotor() {
+    // Write Controller 2 Low
+    Serial.println("Brake Motor Ctrl: Reset");
+    digitalWrite(BRK_ENABLE, LOW);
+    digitalWrite(BRK_L_PWM, LOW);
+    digitalWrite(BRK_R_PWM, LOW);
 
 }
 
 /**
- * @brief Post motor controller status to the bus
+ * @brief 
  * 
- * @param controller Controller id
  */
 
-void postMotorControllerStatus(uint8_t controller) {
-    uint8_t status = getMotorControllerStatus(controller) ? 0x01 : 0x00;
-    uint8_t message = { 0x0C, controller, 0x0A, 0x02, status, 0x00, 0x00, 0x00 };
+void enableBrakeMotor() {
+    Serial.println("Brake Motor Ctrl: Enabled");
+    digitalWrite(BRK_ENABLE, HIGH);
+    
+}
+
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+
+bool isBrakeEnabled() { return digitalRead(BRK_ENABLE) == 1; }
+
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+
+bool postBrakeEnabled() {
+    bool brake = isBrakeEnabled();
+
+    bool brakes = checkBrakes();
+
+    if (brakes) { Serial.println("Brakes Are Enabled"); }
+    uint8_t message[8] = {  };
 
     sendCANMessage(master_can_id, message);
 
+    return brakes;
+
 }
 
 /**
- * @brief Runs the motor controllers forwards
+ * @brief 
  * 
- * @param controller Controller id
- * @param duty_cycle Duty cycle
  */
 
-void runForward(uint8_t controller, int duty_cycle) {
-    if (controller == 1) {
-        Serial.println("Motor Controller 1: Forward Speed " + str(duty_cycle));
-        analogWrite(CTRL1_R_PWM, duty_cycle);
+void incBrakeTicks() { brk_enc_ticks++; }
 
-    } else if (controller == 2) {
-        Serial.println("Motor Controller 2: Forward Speed " + str(duty_cycle));
-        analogWrite(CTRL2_R_PWM, duty_cycle);
-        
-    } else {
-        Serial.println("Error: Invalid Motor ID While Setting Speed: " + str(i));
+/**
+ * @brief 
+ * 
+ */
 
-    }
+void resetBrakeTicks() { brk_enc_ticks = 0; }
+
+/**
+ * @brief 
+ * 
+ * @return int 
+ */
+
+int postBrakeTicks() {
+    uint8_t data[2] = { (brk_enc_ticks >> 8), (brk_enc_ticks&0xFF)};
+    uint8_t message[8] = {  };
+
+    sendCANMessage(master_can_id, message);
+
+    return brk_enc_ticks;
+
 }
 
 /**
- * @brief Runs the motor controllers backwards
+ * @brief 
  * 
- * @param controller Controller id
- * @param duty_cycle Duty cycle
+ * @return true 
+ * @return false 
  */
 
-void runBackward(int controller, int duty_cycle) {
-    if (controller == 1) {
-        Serial.println("Motor Controller 1: Reverse Speed " + str(duty_cycle));
-        analogWrite(CTRL1_L_PWM, duty_cycle);
+bool checkBrakes() { return digitalRead(BRK_PEDAL) == 1; }
 
-    } else if (controller == 1) {
-        Serial.println("Motor Controller 2: Reverse Speed " + str(duty_cycle));
-        analogWrite(CTRL2_L_PWM, duty_cycle);
-        
-    } else {
-        Serial.println("Error: Invalid Motor ID While Setting Speed: " + str(i));
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+
+bool postBrakeEngaged() {
+    bool brakes = checkBrakes();
+
+    if (brakes) { Serial.println("Brakes Are Engaged"); }
+    uint8_t message[8] = {  };
+
+    sendCANMessage(master_can_id, message);
+
+    return brakes;
+
+}
+
+// --------- Steering
+
+/**
+ * @brief 
+ * 
+ */
+
+void setupSteeringMotor() {
+    // Steering Motor Ctrl PinMode
+    Serial.println("Steering Motor Ctrl: Setting Pin Mode");
+    pinMode(STR_ENABLE, OUTPUT);
+    pinMode(STR_L_PWM, OUTPUT);
+    pinMode(STR_R_PWM, OUTPUT);
+
+    // Reset Controller
+    resetSteeringMotor();
+
+    // Set Potentiometer
+    postSteeringPos();
+    postSteeringEnabled();
+
+}
+
+/**
+ * @brief 
+ * 
+ */
+
+void resetSteeringMotor() {
+    // Write Controller 1 Low
+    Serial.println("Steering Motor Ctrl: Reset");
+    digitalWrite(STR_ENABLE, LOW);
+    digitalWrite(STR_L_PWM, LOW);
+    digitalWrite(STR_R_PWM, LOW);
+
+}
+
+void enableSteeringMotor() {
+    Serial.println("Steering Motor Ctrl: Enabled");
+    digitalWrite(STR_ENABLE, HIGH);
+
+}
+
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+
+bool isSteeringEnabled() { return digitalRead(STR_ENABLE) == 1; }
+
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
+
+bool postSteeringEnabled() {
+    bool steering = isSteeringEnabled();
+
+    if (steering) { Serial.println("Steering Is Enabled"); }
+    uint8_t message[8] = {  };
+
+    sendCANMessage(master_can_id, message);
+
+    return steering;
+
+}
+
+/**
+ * @brief 
+ * 
+ * @return int 
+ */
+
+int checkSteeringPos() { return analogRead(STR_POT); }
+
+/**
+ * @brief 
+ * 
+ * @return int 
+ */
+
+int postSteeringPos() {
+    int pot_value = checkSteeringPos();
+    uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
+    uint8_t message[8] = {  };
+
+    sendCANMessage(master_can_id, message);
+
+    return pot_value;
+
+}
+
+/**
+ * @brief 
+ * 
+ * @param duty_cycle 
+ */
+
+void turnLeft(int duty_cycle) {
+    if (!isSteeringEnabled()) { return; }
+
+    analogWrite(STR_L_PWM, 0);
+    analogWrite(STR_R_PWM, duty_cycle);
+
+    Serial.println("Steering Left: " + str(duty_cycle));
+
+}
+
+/**
+ * @brief 
+ * 
+ * @param duty_cycle 
+ */
+
+void turnRight(int duty_cycle) {
+    if (!isSteeringEnabled()) { return; }
+
+    analogWrite(STR_R_PWM, 0);
+    analogWrite(STR_L_PWM, duty_cycle);
+
+    Serial.println("Steering Right: " + str(duty_cycle));
+
+}
+
+/**
+ * @brief 
+ * 
+ * @param duty_cycle 
+ * @param pot_pos 
+ */
+
+void turnToPos(int duty_cycle, int pot_pos) {
+    int current_pos = postSteeringPos();
+    int cnt;
+
+    if (current_pos != pot_pos) {
+        if (pot_pos > current_pos) {
+            turnLeft(duty_cycle);
+
+        } else {
+            turnRight(duty_cycle);
+
+        }
+
+        while (current_pos != pot_pos) { 
+            delay(1); 
+            cnt++;
+
+            if (cnt % 10 == 0) { current_pos = postSteeringPos(); }
+            
+            if (cnt > 10000) { 
+                Serial.println("Turn Timeout");
+
+                uint8_t message[8] = {  };
+                sendCANMessage(master_can_id, message);
+
+                return; 
+            
+            }
+            
+        }
+
+        resetSteeringMotor();
 
     }
 }
