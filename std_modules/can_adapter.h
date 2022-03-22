@@ -28,5 +28,4 @@ public:
     bool getCANMessage();
     void sendCANMessage(uint32_t id, uint8_t m_data[8]);
     void invalidCommand();
-    int hexToDec(uint8_t hex);
     

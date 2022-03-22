@@ -80,7 +80,7 @@ void standardModuleLoopHead() {
         case 0x0A:
             switch (can_msg_in.data[1]) {
                 case 0x0A:
-                    setIDLightColor(hexToDec(can_msg_in.data[2]), hexToDec(can_msg_in.data[3]), hexToDec(can_msg_in.data[4]))
+                    setIDLightColor(can_msg_in.data[2] << 8, can_msg_in.data[3] << 8, can_msg_in.data[4] << 8 );
                     break;
             
                 default:
