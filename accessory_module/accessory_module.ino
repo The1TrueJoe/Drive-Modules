@@ -49,7 +49,7 @@ int def_horn_interval = 50;
 
 void setup() {
     // CAN ID
-    m_can_id = 0xFF2;
+    m_can_id = accessory_module_default_address;
 
     // Standard module setup
     standardModuleSetup();

@@ -59,7 +59,7 @@ volatile long brk_enc_ticks = 0;
 /** @brief Arduino default setup function (Holds until this module is enabled)  */
 void setup() {
     // CAN ID
-    m_can_id = 0xFF1;
+    m_can_id = direction_control_default_address;
 
     // Standard module setup
     standardModuleSetup(CAN_CS);
