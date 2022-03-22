@@ -58,6 +58,9 @@ volatile long brk_enc_ticks = 0;
 
 /** @brief Arduino default setup function (Holds until this module is enabled)  */
 void setup() {
+    // CAN ID
+    m_can_id = 0xFF1;
+
     // Standard module setup
     standardModuleSetup(CAN_CS);
 
@@ -361,7 +364,7 @@ bool postBrakeEnabled() {
 
     // Send Message
     uint8_t message[8] = { 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00, 0x00 };
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return status
     return brakes;
@@ -381,7 +384,7 @@ int postBrakeTicks() {
     uint8_t message[8] = { 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return tick count
     return brk_enc_ticks;
@@ -505,7 +508,7 @@ bool postSteeringEnabled() {
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00, 0x00 };
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return the status
     return steering;
@@ -550,7 +553,7 @@ bool postSteeringMode() {
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00, 0x00 };
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return manual
     return is_man;
@@ -568,7 +571,7 @@ int postSteeringWheelPos() {
     uint8_t message[8] = { 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return the potentiometer value
     return pot_value;
@@ -586,7 +589,7 @@ int postSteeringPos() {
     uint8_t message[8] = { 0x0C, 0x01, 0x0F, data[0], data[1], 0x00, 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
     // Return the potentiometer value
     return pot_value;
@@ -686,7 +689,7 @@ void turnWheelsToPos(int duty_cycle, int pot_pos) {
                 Serial.println("Turn Timeout");
 
                 uint8_t message[8] = {  };
-                sendCANMessage(master_can_id, message);
+                sendCANMessage(m_can_id, message);
 
                 return; 
             

@@ -47,6 +47,9 @@ int def_horn_interval = 50;
  */
 
 void setup() {
+    // CAN ID
+    m_can_id = 0xFF2;
+
     // Standard module setup
     standardModuleSetup();
 
@@ -355,6 +358,6 @@ void postRelayStatus(uint8_t id) {
     uint8_t message[can_msg_in.dlc] = { 0x0C, id, 0x0A, status, 0x02, 0x00, 0x00, 0x00 };
 
     // Send Message
-    sendCANMessage(master_can_id, message);
+    sendCANMessage(m_can_id, message);
 
 }
