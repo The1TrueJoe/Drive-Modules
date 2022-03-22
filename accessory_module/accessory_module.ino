@@ -14,8 +14,9 @@
 
 #include "module.h"
 
-// Relays
+// --------- Definitions
 
+// Relays
 #define LEFT_TAIL_RELAY 8
 #define RIGHT_TAIL_RELAY 7
 #define TAIL_LIGHT_RELAY 6
@@ -39,7 +40,7 @@ bool continue_loop = true;
 int def_blinking_interval = 2000;
 int def_horn_interval = 50;
 
-// --------- Setup
+// --------- Arduino
 
 /**
  * @brief Main setup
