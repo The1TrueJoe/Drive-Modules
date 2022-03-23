@@ -31,6 +31,24 @@ void ready() {
 }
 
 /**
+ * @brief Check the condition and use to prepare a CAN message
+ * 
+ * @param condition Condition to check
+ * 
+ * @return uint8_t (0x01 - True) or (0x02 - False)
+ */
+
+uint8_t getCANBoolean(bool condition) {
+    if (condition) {
+        return 0x01;
+
+    } else {
+        return 0x02;
+
+    }
+}
+
+/**
  * @brief Holds the module until receiveing an enable message. NOTE: Disable interupts first, enable interupts afterwards
  * 
  */
