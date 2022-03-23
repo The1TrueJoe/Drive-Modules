@@ -29,8 +29,8 @@
 const uint8_t str_id = 0x01;
 
 // Manual Mode
-bool manual_mode_eng = true;
-int manual_mode_steering_speed = 128;
+volatile bool manual_mode_eng = true;
+volatile int manual_mode_steering_speed = 128;
 
 // Brake Motor Ctrl
 #define BRK_L_PWM 5

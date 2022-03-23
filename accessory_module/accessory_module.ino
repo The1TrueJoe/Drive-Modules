@@ -36,9 +36,9 @@ const uint8_t rear_buzz_id = 0x05;
 #define BRAKE_PEDAL 3
 
 // Time
-bool continue_loop = true;
-int def_blinking_interval = 2000;
-int def_horn_interval = 50;
+volatile bool continue_loop = true;
+volatile int def_blinking_interval = 2000;
+volatile int def_horn_interval = 50;
 
 // --------- Arduino
 
