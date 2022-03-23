@@ -178,10 +178,3 @@ void setCANAddress(uint32_t new_can_addr) {
     EEPROM.update(can_addr_mem_loc, new_can_addr); 
 
 }
-
-// --------- Utility
-
-int hexToDec(uint8_t hex) {
-   
-
-}
