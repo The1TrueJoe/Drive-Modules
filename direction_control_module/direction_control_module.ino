@@ -363,7 +363,7 @@ bool postBrakeEnabled() {
     }
 
     // Send Message
-    uint8_t message[8] = { 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00 };
     sendCANMessage(m_can_id, message);
 
     // Return status
@@ -381,7 +381,7 @@ void resetBrakeTicks() { brk_enc_ticks = 0; }
 int postBrakeTicks() {
     // Build mesage
     uint8_t data[2] = { (brk_enc_ticks >> 8), (brk_enc_ticks&0xFF)};
-    uint8_t message[8] = { 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
     sendCANMessage(m_can_id, message);
@@ -507,7 +507,7 @@ bool postSteeringEnabled() {
     }
 
     // Send message
-    uint8_t message[8] = { 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00 };
     sendCANMessage(m_can_id, message);
 
     // Return the status
@@ -552,7 +552,7 @@ bool postSteeringMode() {
     }
 
     // Send message
-    uint8_t message[8] = { 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00 };
     sendCANMessage(m_can_id, message);
 
     // Return manual
@@ -568,7 +568,7 @@ int postSteeringWheelPos() {
     // Build message
     int pot_value = checkSteeringWheelPos();
     uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
-    uint8_t message[8] = { 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00 };
 
     // Send message
     sendCANMessage(m_can_id, message);
@@ -586,7 +586,7 @@ int postSteeringPos() {
     // Build message
     int pot_value = checkSteeringPos();
     uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
-    uint8_t message[8] = { 0x0C, 0x01, 0x0F, data[0], data[1], 0x00, 0x00, 0x00 };
+    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
     sendCANMessage(m_can_id, message);

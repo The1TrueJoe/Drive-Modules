@@ -365,7 +365,7 @@ bool checkRelay(uint8_t id) {
 void postRelayStatus(uint8_t id) {
     // Build Message
     uint8_t status = checkRelay(id) ? 0x01 : 0x02;
-    uint8_t message[can_msg_in.dlc] = { 0x0C, id, 0x0A, status, 0x02, 0x00, 0x00, 0x00 };
+    uint8_t message[can_msg_in.dlc] = { 0x0C, 0x0C, 0x0A, id, status, 0x00, 0x00, 0x00 };
 
     // Send Message
     sendCANMessage(m_can_id, message);
