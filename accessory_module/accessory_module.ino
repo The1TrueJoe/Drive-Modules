@@ -59,8 +59,8 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
-    attachInterupt(BRAKE_PEDAL, pedalPressed, RISING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
 
     // Relay setup
     setupRelays();
@@ -186,8 +186,12 @@ void canLoop() {
 
 /** @brief When pedal is pressed */
 void pedalPressed() {
+    noInterrupts();
+
     closeRelay(tail_light_id);
     attachInterupt(BRAKE_PEDAL, pedalReleased, FALLING);
+
+    interupts();
 
 }
 

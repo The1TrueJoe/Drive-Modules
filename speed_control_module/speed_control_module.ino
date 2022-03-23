@@ -55,7 +55,7 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
 
     // Relay setup
     setupDirectionSelector();

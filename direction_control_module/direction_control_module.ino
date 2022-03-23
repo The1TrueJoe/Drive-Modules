@@ -69,8 +69,8 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
-    attachInterupt(BRK_ENC, incBrakeTicks, FALLING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(BRK_ENC), incBrakeTicks, FALLING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
