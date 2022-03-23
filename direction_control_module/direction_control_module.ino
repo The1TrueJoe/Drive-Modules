@@ -414,7 +414,7 @@ void pullBrakes(int duty_cycle) {
     analogWrite(BRK_R_PWM, duty_cycle);
 
     // Report
-    Serial.println("Pulling Brakes: " + str(duty_cycle));
+    Serial.println("Pulling Brakes: " + String(duty_cycle));
 
 }
 
@@ -441,7 +441,7 @@ void reverseBrakes(int duty_cycle) {
     analogWrite(BRK_L_PWM, duty_cycle);
 
     // Report
-    Serial.println("Reversing Brakes: " + str(duty_cycle));
+    Serial.println("Reversing Brakes: " + String(duty_cycle));
 
 }
 
@@ -620,7 +620,7 @@ void turnLeft(int duty_cycle) {
     analogWrite(STR_R_PWM, duty_cycle);
 
     // Report
-    Serial.println("Steering Left: " + str(duty_cycle));
+    Serial.println("Steering Left: " + String(duty_cycle));
 
 }
 
@@ -648,7 +648,7 @@ void turnRight(int duty_cycle) {
     analogWrite(STR_L_PWM, duty_cycle);
 
     // Report
-    Serial.println("Steering Right: " + str(duty_cycle));
+    Serial.println("Steering Right: " + String(duty_cycle));
 
 }
 
