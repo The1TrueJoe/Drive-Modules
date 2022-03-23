@@ -45,10 +45,10 @@ void loop() {
         String drive_com_msg = Serial.readString();
 
         if (drive_com_msg.indexOf("CMD-Send: ") != -1) {
-            adapterSendMessage(drive_com_msg);
+            adapterSendMessage(drive_com_msg.replace("CMD-Send: ", ""));
 
         } else if (drive_com_msg.indexOf("Display: ") != -1) {
-            display(drive_com_msg);
+            display(drive_com_msg.replace("Display: ", ""));
 
         }
     }m
@@ -61,8 +61,6 @@ void loop() {
  */
 
 void display(String drive_com_msg) {
-    drive_com_msg = drive_com_msg.replace("Display: ", "");
-
     if (drive_com_msg.indexOf("L1: ") != -1) {
         drive_com_msg = drive_com_msg.replace("L1: ", "");
         lcd.setCursor(0, 0);
@@ -95,9 +93,6 @@ void display(String drive_com_msg) {
  */
 
 void adapterSendMessage(String drive_com_msg) {
-    // Remove message header
-    drive_com_msg = drive_com_msg.replace("CMD-Send: ", "");
-
     // Get the ID indexes
     int id_begin_index = drive_com_msg.indexOf("(");
     int id_end_index = drive_com_msg.indexOf(")");
