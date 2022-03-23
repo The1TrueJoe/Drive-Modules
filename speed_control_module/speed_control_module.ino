@@ -84,6 +84,11 @@ void loop() {
  */
 
 void canLoop() {
+    // Get message
+    if (!getCANMessage()) { return: }
+
+    standardModuleLoopHead();
+
     switch (can_msg_in.data[0]) {
         case 0x0A:
             switch (can_msg_in.data[1]) {
@@ -232,6 +237,8 @@ void canLoop() {
         default:
             break;
     }
+
+     standardModuleLoopTail();
 
 }
 

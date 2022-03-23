@@ -178,3 +178,43 @@ void setCANAddress(uint32_t new_can_addr) {
     EEPROM.update(can_addr_mem_loc, new_can_addr); 
 
 }
+
+/**
+ * @brief Check the condition and use to prepare a CAN message
+ * 
+ * @param condition Condition to check
+ * 
+ * @return uint8_t (0x01 - True) or (0x02 - False)
+ */
+
+uint8_t getCANBoolean(bool condition) {
+    if (condition) {
+        return 0x01;
+
+    } else {
+        return 0x02;
+
+    }
+}
+
+/** @brief Convert an 8 bit integer into a standard integer  */
+int convertToInt(uint8_t incoming_int) {
+    int new_int = incoming_int << 8;
+
+    if (new_int < 0) { new_int = new_int * -1; }
+    if (new_int > 255) { new_int = 255; }
+
+    return new_int;
+
+}
+
+/** @brief Convert two 8 bit integers into a standard integer  */
+int convertToInt(uint8_t int_1, uint8_t, int_2) {
+    int new_int = (int_1 << 8) | int_2;
+
+    if (new_int < 0) { new_int = new_int * -1; }
+    if (new_int > 255) { new_int = 255; }
+
+    return new_int;
+    
+}

@@ -22,6 +22,9 @@ private:
     uint32_t readEEPROM32bit(int address);
     uint32_t getCANAddress();
     void setCANAddress(uint32_t new_can_addr);
+    uint8_t getCANBoolean(bool condition);
+    int convertToInt(uint8_t incoming_int);
+    int convertToInt(uint8_t int_1, uint8_t int_2);
 
 public:
     void setupCAN(int CS_PIN = Default_CAN_CS);

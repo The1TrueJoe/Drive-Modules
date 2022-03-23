@@ -19,4 +19,3 @@ public:
     void standardModuleLoopTail();
     void ready();
     void holdTillEnabled();
-    uint8_t getCANBoolean(bool condition);
