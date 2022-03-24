@@ -77,7 +77,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 
     // Start log
     Serial.print("CAN-TX: (");
-    Serial.print(can_msg_out.id, HEX);
+    Serial.print(can_msg_out.can_id, HEX);
     Serial.print(") ");
 
     // Print data
@@ -99,7 +99,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 void printReceivedCANMessage() {
     // Start message
     Serial.print("CAN-RX: (");
-    Serial.print(can_msg_out.id, HEX);
+    Serial.print(can_msg_out.can_id, HEX);
     Serial.print(") ");
 
     // Print data
