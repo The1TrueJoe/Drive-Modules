@@ -186,12 +186,8 @@ void canLoop() {
 
 /** @brief When pedal is pressed */
 void pedalPressed() {
-    noInterrupts();
-
     closeRelay(tail_light_id);
     attachInterupt(BRAKE_PEDAL, pedalReleased, FALLING);
-
-    interupts();
 
 }
 
