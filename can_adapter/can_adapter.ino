@@ -100,14 +100,14 @@ void adapterSendMessage(String drive_com_msg) {
     // Check ID
     if (id_begin_index == -1 || id_end_index == -1) {
         Serial.println("Err: CAN message is missing ID");
-        continue;
+        return;
 
     }
 
     // Get the ID
     String str_id = drive_com_msg.substring(id_begin_index, id_end_index - 1);
     byte id_buf[4];
-    str_id.StringToCharArray(id_buf, sizeof(id_buf));
+    str_id.toCharArray(id_buf, sizeof(id_buf));
     uint32_t set_id = id_buf[0] | (id_buf[1] << 8) | (id_buf[2] << 16) | (id_buf[3] << 24);
 
     // Clear ID
@@ -118,7 +118,7 @@ void adapterSendMessage(String drive_com_msg) {
 
     // Get data
     uint8_t data_buf[8];
-    drive_com_msg.StringToCharArray(data_buf, sizeof(data_buf));
+    drive_com_msg.toCharArray(data_buf, sizeof(data_buf));
 
     // Send message
     sendCANMessage(set_id, data_buf);
