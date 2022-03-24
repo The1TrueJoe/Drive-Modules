@@ -26,7 +26,7 @@
 
 // Direction Control
 #define FWD_REV_SEL 5
-bool buzzer_enabled = false;
+volatile bool buzzer_enabled = false;
 uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
@@ -55,7 +55,7 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
 
     // Relay setup
     setupDirectionSelector();
@@ -84,6 +84,11 @@ void loop() {
  */
 
 void canLoop() {
+    // Get message
+    if (!getCANMessage()) { return: }
+
+    standardModuleLoopHead();
+
     switch (can_msg_in.data[0]) {
         case 0x0A:
             switch (can_msg_in.data[1]) {
@@ -232,6 +237,8 @@ void canLoop() {
         default:
             break;
     }
+
+     standardModuleLoopTail();
 
 }
 

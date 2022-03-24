@@ -31,24 +31,6 @@ void ready() {
 }
 
 /**
- * @brief Check the condition and use to prepare a CAN message
- * 
- * @param condition Condition to check
- * 
- * @return uint8_t (0x01 - True) or (0x02 - False)
- */
-
-uint8_t getCANBoolean(bool condition) {
-    if (condition) {
-        return 0x01;
-
-    } else {
-        return 0x02;
-
-    }
-}
-
-/**
  * @brief Holds the module until receiveing an enable message. NOTE: Disable interupts first, enable interupts afterwards
  * 
  */
@@ -94,11 +76,25 @@ void holdTillEnabled() {
  */
 
 void standardModuleLoopHead() {
+    
+}
+
+/**
+ * @brief Standard module loop. Reads message and determines the course of action
+ * 
+ */
+
+void standardModuleLoopTail() {
     switch (can_msg_in.data[0]) {
-        case 0x0A:
+        case 0x0F:
             switch (can_msg_in.data[1]) {
                 case 0x0A:
-                    setIDLightColor(can_msg_in.data[2] << 8, can_msg_in.data[3] << 8, can_msg_in.data[4] << 8 );
+                    setIDLightColor(
+                        convertToInt(can_msg_in.data[2]), 
+                        convertToInt(can_msg_in.data[3]), 
+                        convertToInt(can_msg_in.data[4]) 
+                    );
+
                     break;
             
                 default:
@@ -111,13 +107,4 @@ void standardModuleLoopHead() {
             break;
 
     }
-}
-
-/**
- * @brief Standard module loop. Reads message and determines the course of action
- * 
- */
-
-void standardModuleLoopTail() {
-
 }

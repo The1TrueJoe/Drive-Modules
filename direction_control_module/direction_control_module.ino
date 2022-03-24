@@ -29,8 +29,8 @@
 const uint8_t str_id = 0x01;
 
 // Manual Mode
-bool manual_mode_eng = true;
-int manual_mode_steering_speed = 128;
+volatile bool manual_mode_eng = true;
+volatile int manual_mode_steering_speed = 128;
 
 // Brake Motor Ctrl
 #define BRK_L_PWM 5
@@ -69,8 +69,8 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
-    attachInterupt(BRK_ENC, incBrakeTicks, FALLING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(BRK_ENC), incBrakeTicks, FALLING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
@@ -101,6 +101,9 @@ void loop() {
 
 /** @brief CAN Message Handling (Runs on interupt) */
 void canLoop() {
+    // Get message
+    if (!getCANMessage()) { return: }
+
     standardModuleLoopHead();
 
     switch (can_msg_in.data[0]) {
@@ -129,11 +132,11 @@ void canLoop() {
                         case 0x0C:
                             switch (can_msg_in.data[3]) {
                                 case 0x01:
-                                    turnLeft((can_msg_in.data[4] << 8) | can_msg_in.data[5]);
+                                    turnLeft(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
                                     break;
 
                                 case 0x02:
-                                    turnRight((can_msg_in.data[4] << 8) | can_msg_in.data[5]);
+                                    turnRight(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
                                     break;
 
                                 default:
@@ -193,11 +196,11 @@ void canLoop() {
                         case 0x0C:
                             switch (can_msg_in.data[3]) {
                                 case 0x01:
-                                    pullBrakes((can_msg_in.data[4] << 8) | can_msg_in.data[5]);
+                                    pullBrakes(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
                                     break;
 
                                 case 0x02;
-                                    reverseBrakes((can_msg_in.data[4] << 8) | can_msg_in.data[5]);
+                                    reverseBrakes(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
                                     break;
 
                                 default:
@@ -228,7 +231,7 @@ void canLoop() {
         case 0x0B:
             switch (can_msg_in.data[1]) {
                 case 0x01:
-                    turnWheelsToPos((can_msg_in.data[2] << 8) | can_msg_in.data[2]);
+                    turnWheelsToPos(convertToInt((can_msg_in.data[2], can_msg_in.data[3]);
                     break;
 
                 default:
@@ -414,7 +417,7 @@ void pullBrakes(int duty_cycle) {
     analogWrite(BRK_R_PWM, duty_cycle);
 
     // Report
-    Serial.println("Pulling Brakes: " + str(duty_cycle));
+    Serial.println("Pulling Brakes: " + String(duty_cycle));
 
 }
 
@@ -441,7 +444,7 @@ void reverseBrakes(int duty_cycle) {
     analogWrite(BRK_L_PWM, duty_cycle);
 
     // Report
-    Serial.println("Reversing Brakes: " + str(duty_cycle));
+    Serial.println("Reversing Brakes: " + String(duty_cycle));
 
 }
 
@@ -620,7 +623,7 @@ void turnLeft(int duty_cycle) {
     analogWrite(STR_R_PWM, duty_cycle);
 
     // Report
-    Serial.println("Steering Left: " + str(duty_cycle));
+    Serial.println("Steering Left: " + String(duty_cycle));
 
 }
 
@@ -648,7 +651,7 @@ void turnRight(int duty_cycle) {
     analogWrite(STR_L_PWM, duty_cycle);
 
     // Report
-    Serial.println("Steering Right: " + str(duty_cycle));
+    Serial.println("Steering Right: " + String(duty_cycle));
 
 }
 

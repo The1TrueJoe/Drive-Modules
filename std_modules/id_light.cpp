@@ -24,7 +24,7 @@ void ID_LIGHT::setupIDLight() {
  */
 
 void ID_LIGHT::setIDLightColor(int red, int green, int blue) {
-    Serial.println("ID Light: Set R: " str(red) + " G: " = str(green) + " B: " + str(blue));
+    Serial.println("ID Light: Set R: " String(red) + " G: " = String(green) + " B: " + String(blue));
     analogWrite(ID_LIGHT_RED, red);
     analogWrite(ID_LIGHT_GREEN, green);
     analogWrite(ID_LIGHT_BLUE, blue);

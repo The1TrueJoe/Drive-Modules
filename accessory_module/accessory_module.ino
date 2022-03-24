@@ -36,9 +36,9 @@ const uint8_t rear_buzz_id = 0x05;
 #define BRAKE_PEDAL 3
 
 // Time
-bool continue_loop = true;
-int def_blinking_interval = 2000;
-int def_horn_interval = 50;
+volatile bool continue_loop = true;
+volatile int def_blinking_interval = 2000;
+volatile int def_horn_interval = 50;
 
 // --------- Arduino
 
@@ -59,8 +59,8 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(CAN_INT, canLoop, FALLING);
-    attachInterupt(BRAKE_PEDAL, pedalPressed, RISING);
+    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
 
     // Relay setup
     setupRelays();
@@ -73,10 +73,43 @@ void setup() {
  */
 
 void loop() {
-    // Periodic updates
-    postRelays();
-    delay(10000);
+    switch (can_msg_in.data[0]) {
+        case 0x0B:
+            switch (can_msg_in.data[1]) {
+                case 0x0B:
+                    int interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_blink_interval;
+                    int id = can_msg_in.data[2];
 
+                    while (continue_loop) {
+                        closeRelay(id);
+                        delay(interval);
+                        openRelay(id);
+
+                    }
+
+                    break;
+
+
+                case 0x01:
+                    int interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_horn_interval;
+
+                    closeRelay(horn_id);
+                    delay(interval);
+                    openRelay(horn_id);
+
+                    break;
+                    
+                default:
+                    break;
+
+            }
+
+            break;
+
+        default:
+            break;
+
+    }
 }
 
 /**
@@ -85,6 +118,9 @@ void loop() {
  */
 
 void canLoop() {
+    // Get message
+    if (!getCANMessage()) { return: }
+
     standardModuleLoopHead();
 
     switch (can_msg_in.data[0]) {
@@ -105,40 +141,6 @@ void canLoop() {
             }
 
             break;
-            
-
-        case 0x0B:
-            switch (can_msg_in.data[1]) {
-                case 0x0B:
-                    int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
-                    int id = can_msg_in.data[2];
-
-                    while (continue_loop) {
-                        closeRelay(id);
-                        delay(interval);
-                        openRelay(id);
-
-                    }
-
-                    break;
-
-
-                case 0x01:
-                    int interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
-
-                    closeRelay(horn_id);
-                    delay(interval);
-                    openRelay(horn_id);
-
-                    break;
-                    
-                default:
-                    break;
-
-            }
-
-            break;
-
 
         case 0x0C:
             switch (can_msg_in.data[1]) {
@@ -149,11 +151,11 @@ void canLoop() {
                 case 0x0E:
                     switch (can_msg_in.data[2]) {
                         case 0x01:
-                            def_blink_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_blink_interval;
+                            def_blink_interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_blink_interval;
                             break;
 
                         case 0x02:
-                            def_horn_interval = (can_msg_in.data[3] != 0x00) ? ((can_msg_in.data[3] << 8) * (can_msg_in.data[4] << 8)) : def_horn_interval;
+                            def_horn_interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_horn_interval;
                             break;
 
                         default:
