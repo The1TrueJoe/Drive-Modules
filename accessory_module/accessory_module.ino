@@ -73,43 +73,7 @@ void setup() {
  */
 
 void loop() {
-    // Periodic updates
-    postRelays();
-    delay(10000);
-
-}
-
-/**
- * @brief CAN Message Processing
- * 
- */
-
-void canLoop() {
-    // Get message
-    if (!getCANMessage()) { return: }
-
-    standardModuleLoopHead();
-
     switch (can_msg_in.data[0]) {
-        case 0x0A:
-            switch (can_msg_in.data[2]) {
-                case 0x01:
-                    openRelay(can_msg_in.data[1]);
-                    break;
-
-                case 0x02:
-                    closeRelay(can_msg_in.data[1]);
-                    continue_loop = false;
-                    break;
-
-                default:
-                    break;
-
-            }
-
-            break;
-            
-
         case 0x0B:
             switch (can_msg_in.data[1]) {
                 case 0x0B:
@@ -142,6 +106,41 @@ void canLoop() {
 
             break;
 
+        default:
+            break;
+
+    }
+}
+
+/**
+ * @brief CAN Message Processing
+ * 
+ */
+
+void canLoop() {
+    // Get message
+    if (!getCANMessage()) { return: }
+
+    standardModuleLoopHead();
+
+    switch (can_msg_in.data[0]) {
+        case 0x0A:
+            switch (can_msg_in.data[2]) {
+                case 0x01:
+                    openRelay(can_msg_in.data[1]);
+                    break;
+
+                case 0x02:
+                    closeRelay(can_msg_in.data[1]);
+                    continue_loop = false;
+                    break;
+
+                default:
+                    break;
+
+            }
+
+            break;
 
         case 0x0C:
             switch (can_msg_in.data[1]) {
