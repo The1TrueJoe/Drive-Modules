@@ -26,7 +26,7 @@
 
 // Direction Control
 #define FWD_REV_SEL 5
-bool buzzer_enabled = false;
+volatile bool buzzer_enabled = false;
 uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
