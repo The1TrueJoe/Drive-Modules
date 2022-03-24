@@ -76,14 +76,11 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     }
 
     // Start log
-    Serial.print("CAN-TX: (");
-    Serial.print(can_msg_out.can_id, HEX);
-    Serial.print(") ");
+    Serial.print("CAN-TX: (" + String(can_msg_out.can_id) + ") ");
 
     // Print data
     for (int i = 0; i < can_msg_out.can_dlc; i++) {
-        Serial.print(can_msg_out.data[i], HEX);
-        Serial.print(" ");
+        Serial.print(String(can_msg_out.data[i]) + " ");
 
     }
 
@@ -97,19 +94,16 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
 
 /** @brief Print out the received can frame*/
 void printReceivedCANMessage() {
-    // Start message
-    Serial.print("CAN-RX: (");
-    Serial.print(can_msg_out.can_id, HEX);
-    Serial.print(") ");
+    // Start log
+    Serial.print("CAN-RX: (" + String(can_msg_in.can_id) + ") ");
 
     // Print data
     for (int i = 0; i < can_msg_in.can_dlc; i++) {
-        Serial.print(can_msg_out.data[i], HEX);
-        Serial.print(" ");
+        Serial.print(String(can_msg_in.data[i]) + " ");
 
     }
 
-    // End Line
+    // New Line
     Serial.println();
 
 }
