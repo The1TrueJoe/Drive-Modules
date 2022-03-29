@@ -203,7 +203,7 @@ int convertToInt(uint8_t incoming_int) {
 }
 
 /** @brief Convert two 8 bit integers into a standard integer  */
-int convertToInt(uint8_t int_1, uint8_t, int_2) {
+int convertToInt(uint8_t int_1, uint8_t int_2) {
     int new_int = (int_1 << 8) | int_2;
 
     if (new_int < 0) { new_int = new_int * -1; }
