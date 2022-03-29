@@ -40,10 +40,11 @@ void holdTillEnabled() {
     uint8_t enabled_message[8] = { 0xAA, 0xAB, 0xAC, 0xAD, 0xAF, 0xA0, 0xA1, 0xA2 };
 
     Serial.println("Awaiting Enable Message!");
+    ready()
     getCANMessage();
 
     while (!enabled) {
-        bool equal_message = true;
+        bool equal_message = true; 
 
         for (int i = 0; i < len(enabled_message); i++) [
             if (enabled_message[i] != can_msg_in[i]) {
@@ -57,6 +58,7 @@ void holdTillEnabled() {
             delay(100);
 
             Serial.println("Awaiting Enable Message!");
+            ready()
             getCANMessage();
 
         } else {
