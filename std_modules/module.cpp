@@ -25,7 +25,10 @@ void standardModuleSetup(int CAN_CS_PIN) {
 void ready() {
     uint8_t message[8] = { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA };
 
-    Serial.println("Module Ready")
+    #ifdef DEBUG
+        Serial.println("Module Ready")
+    #endif
+
     sendCANMessage(master_can_id, message);
 
 }
@@ -39,11 +42,15 @@ void holdTillEnabled() {
     bool enabled = false;
     uint8_t enabled_message[8] = { 0xAA, 0xAB, 0xAC, 0xAD, 0xAF, 0xA0, 0xA1, 0xA2 };
 
-    Serial.println("Awaiting Enable Message!");
+    #ifdef DEBUG
+        Serial.println("Awaiting Enable Message!");
+    #endif
+
+    ready()
     getCANMessage();
 
     while (!enabled) {
-        bool equal_message = true;
+        bool equal_message = true; 
 
         for (int i = 0; i < len(enabled_message); i++) [
             if (enabled_message[i] != can_msg_in[i]) {
@@ -56,17 +63,26 @@ void holdTillEnabled() {
         if (!equal_message) {
             delay(100);
 
-            Serial.println("Awaiting Enable Message!");
+            #ifdef DEBUG
+                Serial.println("Awaiting Enable Message!");
+            #endif
+
+            ready()
             getCANMessage();
 
         } else {
-            Serial.println("Enable Message Received!");
+            #ifdef DEBUG
+                Serial.println("Enable Message Received!");
+            #endif
+
             enabled = true;
 
         }
     }
 
-    Serial.println("Hold Ended");
+    #ifdef DEBUG
+        Serial.println("Hold Ended");
+    #endif
 
 }
 
