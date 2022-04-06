@@ -15,7 +15,7 @@
 
 // Libraries
 #include <module.h>
-#include <MCP4131.h>
+#include <mcp4xxx.h>
 
 // Accelerator Input
 #define ACCEL_INPUT_SEL 7
@@ -31,7 +31,17 @@ uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
 #define SPEED_CTRL_CS 9
-MCP4131 mcp4131(SPEED_CTRL_CS);
+#define NO_DIGIPOT_READ
+#define RESET_BY_DECREMENT
+
+mcp4xxx* mcp4151(SPEED_CTRL_CS);
+
+using namespace icecave::arduino;
+
+#ifdef NO_DIGIPOT_READ
+    volatile uint8_t wiper_pos = 0;
+    
+#endif
 
 // CAN
 #define CAN_CS 10
@@ -53,6 +63,23 @@ void setup() {
     // Announce Ready
     ready();
     holdTillEnabled();
+
+    #ifdef RESET_BY_DECREMENT
+        #ifdef DEBUG
+            Serial.println("Reseting Wiper Pos by Decrementing");
+
+        #endif
+
+        // Reset Wiper
+        for (int i = 0; i < 260; i++) {
+            mcp4151->decrement();
+            
+        }
+
+    #else
+        mcp4151->write(0);
+    
+    #endif
 
     // Setup Interupts
     attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
@@ -351,32 +378,83 @@ bool postManualAccelInput() {
 
 /** @brief Set the accelerator digital pot position */
 void setAccelPos(uint8_t pos) {
-    mcp4131.writeWiper(pos);
+    #ifdef RESET_BY_DECREMENT
+        uint8_t current_pos = getAccelSetting();
+
+        if (current_pos > pos) {
+            for (int i = current_pos; i < pos; i++) {
+                mcp4151->increment();
+
+                #ifdef NO_DIGIPOT_READ
+                    wiper_pos++;
+                #endif
+
+            }
+
+        } else if (current_pos < pos) {
+            for (int i = current_pos; i > pos; i--) {
+                mcp4151->decrement();
+
+                #ifdef NO_DIGIPOT_READ
+                    wiper_pos--;
+                #endif
+
+            }
+        }
+
+        for (int i = )
+
+    #else
+        mcp4151->write(pos);
+
+    #endif
+
     postAccelSetting();
 
 }
 
 /** @brief Increment the accelerator digital pot position */
 void incAccelPos() { 
-    mcp4131.incrementWiper();
+    mcp4151->increment();
+
+    #ifdef NO_DIGIPOT_READ
+        wiper_pos++;
+
+    #endif
+
     postAccelSetting();
 
 }
 
 /** @brief Decrement the accelerator digital pot position */
 void decAccelPos() { 
-    mcp4131.incrementWiper();
+    mcp4151->increment();
+
+    #ifdef NO_DIGIPOT_READ
+        wiper_pos--;
+
+    #endif
+
     postAccelSetting();
+
+}
+
+/** @brief Get the acclerator wiper pos*/
+uint8_t getAccelSetting() {
+    #ifdef NO_DIGIPOT_READ
+        return wiper_pos;
+
+    #else
+        return mcp4151->readWiper();
+
+    #endif
 
 }
 
 /** @brief Report the accelerator digital pot position */
 uint8_t postAccelSetting() {
-    // Collect wiper data
-    uint8_t wiper_pos = mcp4131.readWiper();
-
     // Build Message
-    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0A, wiper_pos, 0x00, 0x00, 0x00};
+    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0A, getAccelSetting(), 0x00, 0x00, 0x00};
     sendCANMessage(m_can_id, message);
 
     // Return value
