@@ -25,9 +25,6 @@
 // Steering Wheel Input Potentiometer
 #define STR_WHL_POT A4
 
-// Steering Wheel ID (From CAN Messages)
-const uint8_t str_id = 0x01;
-
 // Manual Mode
 volatile bool manual_mode_eng = true;
 volatile int manual_mode_steering_speed = 128;
@@ -37,18 +34,12 @@ volatile int manual_mode_steering_speed = 128;
 #define BRK_R_PWM 10
 #define BRK_ENABLE 7
 
-// Brake Motor Encoder
-#define BRK_ENC 2
-
-// Brake ID (From CAN Messages)
-const uint8_t brk_id = 0x02;
-
-// Brake Encoder Current Ticks
-volatile long brk_enc_ticks = 0;
+// Brake Actuator Potentiometer
+#define BRK_POT A3
 
 // CAN
 #define CAN_CS 8
-#define CAN_INT 3
+#define CAN_INT 2
 
 // --------- Lib
 
@@ -70,7 +61,6 @@ void setup() {
 
     // Setup Interupts
     attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterupt(digitalPinToInterrupt(BRK_ENC), incBrakeTicks, FALLING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
@@ -209,10 +199,6 @@ void canLoop() {
                             }
 
                             break;
-
-                        case 0x0F:
-                            resetBrakeTicks();
-                            break;
                         
                         default:
                             break;
@@ -277,7 +263,7 @@ void canLoop() {
                             break;
 
                         case 0x0F:
-                            postBrakeTicks();
+                            postBrakePos();
                             break;
 
                         default:
@@ -308,8 +294,11 @@ void canLoop() {
 
 /** @brief Sets up the brake motor controller */
 void setupBrakeMotor() {
+    #ifdef DEBUG
+        Serial.println("Brake Motor Ctrl: Setting Pin Mode");
+    #endif
+
     // Brake Motor Ctrl PinMode
-    Serial.println("Brake Motor Ctrl: Setting Pin Mode");
     pinMode(BRK_ENABLE, OUTPUT);
     pinMode(BRK_L_PWM, OUTPUT);
     pinMode(BRK_R_PWM, OUTPUT);
@@ -319,7 +308,7 @@ void setupBrakeMotor() {
 
     // Post Status
     postBrakeEnabled();
-    postBrakeTicks();
+    postBrakePos();
 
 }
 
@@ -331,7 +320,10 @@ void resetBrakeMotor() {
     digitalWrite(BRK_R_PWM, LOW);
 
     // Report
-    Serial.println("Brake Motor Ctrl: Reset");
+    #ifdef DEBUG
+        Serial.println("Brake Motor Ctrl: Reset");
+    #endif
+
     postBrakeEnabled();
 
 }
@@ -342,7 +334,10 @@ void enableBrakeMotor() {
     digitalWrite(BRK_ENABLE, HIGH);
 
     // Report
-    Serial.println("Brake Motor Ctrl: Enabled");
+    #ifdef DEBUG
+        Serial.println("Brake Motor Ctrl: Enabled");
+    #endif
+
     postBrakeEnabled();
     
 }
@@ -356,14 +351,20 @@ bool postBrakeEnabled() {
     bool brakes = isBrakeEnabled();
 
     // Build message
-    if (brakes) {
-        Serial.println("Brakes Are Enabled");
-        uint8_t status = 0x01;
+    #ifdef DEBUG
+        if (brakes) {
+            Serial.println("Brakes Are Enabled");
+            uint8_t status = 0x01;
 
-    } else {
-        uint8_t status = 0x02;
+        } else {
+            uint8_t status = 0x02;
 
-    }
+        }
+
+    #else
+        uint8_t status = brakes ? 0x01 : 0x02;
+
+    #endif
 
     // Send Message
     uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00 };
@@ -374,23 +375,22 @@ bool postBrakeEnabled() {
 
 }
 
-/** @brief Increment the brake motor encoder tick count */
-void incBrakeTicks() { brk_enc_ticks++; }
-
-/** @brief Reset the brake motor encoder tick counter */
-void resetBrakeTicks() { brk_enc_ticks = 0; }
+/** @brief Check the brake linear actuator position */
+int checkBrakePos() { return analogRead(BRK_POT); }
 
 /** @brief Post the brake tick count to the bus */
-int postBrakeTicks() {
+int postBrakePos() {
+    int pot_value = checkBrakePos();
+
     // Build mesage
-    uint8_t data[2] = { (brk_enc_ticks >> 8), (brk_enc_ticks&0xFF)};
+    uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
     uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
     sendCANMessage(m_can_id, message);
 
     // Return tick count
-    return brk_enc_ticks;
+    return pot_value;
 
 }
 
@@ -416,8 +416,10 @@ void pullBrakes(int duty_cycle) {
     analogWrite(BRK_L_PWM, 0);
     analogWrite(BRK_R_PWM, duty_cycle);
 
-    // Report
-    Serial.println("Pulling Brakes: " + String(duty_cycle));
+    #ifdef DEBUG
+        // Report
+        Serial.println("Pulling Brakes: " + String(duty_cycle));
+    #endif
 
 }
 
@@ -443,8 +445,10 @@ void reverseBrakes(int duty_cycle) {
     analogWrite(BRK_R_PWM, 0);
     analogWrite(BRK_L_PWM, duty_cycle);
 
-    // Report
-    Serial.println("Reversing Brakes: " + String(duty_cycle));
+    #ifdef DEBUG
+        // Report
+        Serial.println("Reversing Brakes: " + String(duty_cycle));
+    #endif
 
 }
 
@@ -452,8 +456,11 @@ void reverseBrakes(int duty_cycle) {
 
 /** @brief Setup the steering motor */
 void setupSteeringMotor() {
+    #ifdef DEBUG
+        Serial.println("Steering Motor Ctrl: Setting Pin Mode");
+    #endif
+
     // Steering Motor Ctrl PinMode
-    Serial.println("Steering Motor Ctrl: Setting Pin Mode");
     pinMode(STR_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
     pinMode(STR_R_PWM, OUTPUT);
@@ -475,7 +482,10 @@ void resetSteeringMotor() {
     digitalWrite(STR_R_PWM, LOW);
 
     // Report
-    Serial.println("Steering Motor Ctrl: Reset");
+    #ifdef DEBUG
+        Serial.println("Steering Motor Ctrl: Reset");
+    #endif
+
     postSteeringEnabled();
 
 }
@@ -486,7 +496,10 @@ void enableSteeringMotor() {
     digitalWrite(STR_ENABLE, HIGH);
 
     // Report
-    Serial.println("Steering Motor Ctrl: Enabled");
+    #ifdef DEBUG
+        Serial.println("Steering Motor Ctrl: Enabled");
+    #endif
+
     postSteeringEnabled();
 
 }
@@ -499,15 +512,21 @@ bool postSteeringEnabled() {
     // Check the status
     bool steering = isSteeringEnabled();
 
-    // Build the message
-    if (steering) {
-        Serial.println("Steering Is Enabled");
-        uint8_t status = 0x01;
+    // Build message
+    #ifdef DEBUG
+        if (steering) {
+            Serial.println("Steering is Enabled");
+            uint8_t status = 0x01;
 
-    } else {
-        uint8_t status = 0x02;
-        
-    }
+        } else {
+            uint8_t status = 0x02;
+
+        }
+
+    #else
+        uint8_t status = steering ? 0x01 : 0x02;
+
+    #endif
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00 };
@@ -544,15 +563,21 @@ bool postSteeringMode() {
     bool is_man = isManualMode();
 
     // Build message
-    if (is_man) {
-        Serial.println("Manual Mode Enabled");
-        uint8_t status = 0x01;
+    #ifdef DEBUG
+        if (is_man) {
+            Serial.println("Manual Mode Enabled");
+            uint8_t status = 0x01;
 
-    } else {
-        Serial.println("Manual Mode Disabled");
-        uint8_t status = 0x02;
+        } else {
+            Serial.println("Manual Mode Disabled");
+            uint8_t status = 0x02;
 
-    }
+        }
+    
+    #else
+        uint8_t status = is_man ? 0x01 : 0x02;
+
+    #endif
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00 };
@@ -622,8 +647,10 @@ void turnLeft(int duty_cycle) {
     analogWrite(STR_L_PWM, 0);
     analogWrite(STR_R_PWM, duty_cycle);
 
-    // Report
-    Serial.println("Steering Left: " + String(duty_cycle));
+    #ifdef DEBUG
+        // Report
+        Serial.println("Steering Left: " + String(duty_cycle));
+    #endif
 
 }
 
@@ -650,8 +677,10 @@ void turnRight(int duty_cycle) {
     analogWrite(STR_R_PWM, 0);
     analogWrite(STR_L_PWM, duty_cycle);
 
-    // Report
-    Serial.println("Steering Right: " + String(duty_cycle));
+    #ifdef DEBUG
+        // Report
+        Serial.println("Steering Right: " + String(duty_cycle));
+    #endif
 
 }
 
@@ -689,7 +718,9 @@ void turnWheelsToPos(int duty_cycle, int pot_pos) {
             
             // Timeout
             if (cnt > 10000) { 
-                Serial.println("Turn Timeout");
+                #ifdef DEBUG
+                    Serial.println("Turn Timeout");
+                #endif
 
                 uint8_t message[8] = {  };
                 sendCANMessage(m_can_id, message);
