@@ -25,12 +25,12 @@
 #define HORN_RELAY 9
 
 // Relay IDs
-const uint8_t right_tail_id = 0x00;
-const uint8_t left_tail_id = 0x01;
-const uint8_t head_light_id = 0x02;
-const uint8_t tail_light_id = 0x03;
-const uint8_t horn_id = 0x04;
-const uint8_t rear_buzz_id = 0x05;
+#define right_tail_id 0x00
+#define left_tail_id 0x01
+#define head_light_id 0x02
+#define tail_light_id 0x03
+#define horn_id 0x04
+#define rear_buzz_id 0x05
 
 // Brake Pedal
 #define BRAKE_PEDAL 3
@@ -59,7 +59,7 @@ void setup() {
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(Default_CAN_INT), canLoop, FALLING);
     attachInterupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
 
     // Relay setup
@@ -201,8 +201,11 @@ void pedalReleased() {
 
 /** @brief Setup the relays  */
 void setupRelays() {
-    // Set pinmode
-    Serial.println("Relays: Setting up Relay Control Pins");
+    #ifdef DEBUG
+        // Set pinmode
+        Serial.println("Relays: Setting up Relay Control Pins");
+    #endif
+
     pinMode(RIGHT_TAIL_RELAY, OUTPUT);
     pinMode(LEFT_TAIL_RELAY, OUTPUT);
     pinMode(TAIL_LIGHT_RELAY, OUTPUT);
@@ -213,8 +216,10 @@ void setupRelays() {
     // Reset relays
     resetRelays();
 
-    // Setup complete
-    Serial.println("Relays: Setup Complete");
+    #ifdef DEBUG
+        // Setup complete
+        Serial.println("Relays: Setup Complete");
+    #endif
 
 }
 
@@ -238,32 +243,26 @@ void resetRelays() {
 void closeRelay(uint8_t id) {
     switch (id) {
         case right_tail_id:
-            Serial.println("Right Tail Light Relay: Close");
             digitalWrite(RIGHT_TAIL_RELAY, LOW); 
             break;
 
         case left_tail_id:
-            Serial.println("Left Tail Light Relay: Close");
             digitalWrite(LEFT_TAIL_RELAY, LOW); 
             break;
 
         case tail_light_id:
-            Serial.println("Head Light Relay: Close");
             digitalWrite(TAIL_LIGHT_RELAY, LOW);
             break;
 
         case head_light_id:
-            Serial.println("Head Light Relay: Close");
             digitalWrite(HEAD_LIGHT_RELAY, LOW); 
             break;
 
         case horn_relay_id:
-            Serial.println("Horn Relay: Close");
             digitalWrite(HORN_RELAY, LOW); 
             break;
 
         case rear_buzz_id:
-            Serial.println("Rear Buzzer Relay: Close");
             digitalWrite(REAR_BUZZ_RELAY, LOW);
             break;
 
@@ -285,32 +284,26 @@ void closeRelay(uint8_t id) {
 void openRelay(uint8_t id) {
     switch (id) {
         case right_tail_id:
-            Serial.println("Right Tail Light Relay: Open");
             digitalWrite(RIGHT_TAIL_RELAY, HIGH); 
             break;
 
         case left_tail_id:
-            Serial.println("Left Tail Light Relay: Open");
             digitalWrite(LEFT_TAIL_RELAY, HIGH); 
             break;
 
         case tail_light_id:
-            Serial.println("Head Light Relay: Open");
             digitalWrite(TAIL_LIGHT_RELAY, HIGH);
             break;
 
         case head_light_id:
-            Serial.println("Head Light Relay: Open");
             digitalWrite(HEAD_LIGHT_RELAY, HIGH); 
             break;
 
-        case horn_relay_id:
-            Serial.println("Horn Relay: Open");
+        case horn_id:
             digitalWrite(HORN_RELAY, HIGH); 
             break;
 
         case rear_buzz_id:
-            Serial.println("Rear Buzzer Relay: Open");
             digitalWrite(REAR_BUZZ_RELAY, HIGH);
             break;
 
@@ -346,7 +339,7 @@ bool checkRelay(uint8_t id) {
         case head_light_id:
             return digitalRead(HEAD_LIGHT_RELAY) == HIGH;
 
-        case horn_relay_id:
+        case horn_id:
             return digitalRead(HORN_RELAY) == HIGH;
         
         case rear_buzz_id:
@@ -365,8 +358,25 @@ bool checkRelay(uint8_t id) {
  */
 
 void postRelayStatus(uint8_t id) {
+    #ifdef DEBUG
+        // Build Message
+        if (checkRelay(id)) {
+            Serial.println("Relay " + String(id) + " is Open");
+            uint8_t status = 0x01;
+
+        } else {
+            Serial.println("Relay " + String(id) + " is Closed");
+            uint8_t status = 0x02;
+
+        }
+        
+    #else
+        // Build Message
+        uint8_t status = checkRelay(id) ? 0x01 : 0x02;
+
+    #endif
+
     // Build Message
-    uint8_t status = checkRelay(id) ? 0x01 : 0x02;
     uint8_t message[can_msg_in.dlc] = { 0x0C, 0x0C, 0x0A, id, status, 0x00, 0x00, 0x00 };
 
     // Send Message

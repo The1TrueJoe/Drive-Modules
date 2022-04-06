@@ -8,7 +8,10 @@
  */
 
 void ID_LIGHT::setupIDLight() {
-    Serial.println("ID Light: Setting Pin Mode")
+    #ifdef DEBUG
+        Serial.println("ID Light: Setting Pin Mode")
+    #endif
+
     pinMode(ID_LIGHT_RED, OUTPUT);
     pinMode(ID_LIGHT_GREEN, OUTPUT);
     pinMode(ID_LIGHT_BLUE, OUTPUT);
@@ -24,7 +27,10 @@ void ID_LIGHT::setupIDLight() {
  */
 
 void ID_LIGHT::setIDLightColor(int red, int green, int blue) {
-    Serial.println("ID Light: Set R: " String(red) + " G: " = String(green) + " B: " + String(blue));
+    #ifdef DEBUG
+        Serial.println("ID Light: Set R: " String(red) + " G: " = String(green) + " B: " + String(blue));
+    #endif
+    
     analogWrite(ID_LIGHT_RED, red);
     analogWrite(ID_LIGHT_GREEN, green);
     analogWrite(ID_LIGHT_BLUE, blue);
