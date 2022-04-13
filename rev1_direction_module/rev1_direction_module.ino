@@ -383,7 +383,7 @@ int postBrakePos() {
     int pot_value = checkBrakePos();
 
     // Build mesage
-    uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
+    uint8_t data[2] = { (pot_value >> 8), (pot_value & 0xFF) };
     uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
@@ -595,7 +595,7 @@ int checkSteeringWheelPos() { return analogRead(STR_WHL_POT); }
 int postSteeringWheelPos() {
     // Build message
     int pot_value = checkSteeringWheelPos();
-    uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
+    uint8_t data[2] = { (pot_value >> 8), (pot_value & 0xFF)};
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00 };
 
     // Send message
