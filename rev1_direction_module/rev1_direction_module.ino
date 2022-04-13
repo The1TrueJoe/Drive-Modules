@@ -22,8 +22,9 @@
 // Steering Linear Actuator Potentiometer
 #define STR_POT A5
 
-// Steering Wheel Input Potentiometer
-#define STR_WHL_POT A4
+// Steering Wheel Input Encoder
+#define STR_WHL_ENC 3
+volatile int steering_encoder_ticks = 0;
 
 // Manual Mode
 volatile bool manual_mode_eng = true;
@@ -61,6 +62,7 @@ void setup() {
 
     // Setup Interupts
     attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(STR_WHL_ENC), incSteeringWheelEncoder, RISING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
@@ -588,8 +590,14 @@ bool postSteeringMode() {
 
 }
 
+/** @brief Increment the steering wheel encoder */
+void incSteeringWheelEncoder() { steering_encoder_ticks++; }
+
+/** @brief Increment the steering wheel encoder */
+void resetSteeringWheelEncoder() { steering_encoder_ticks = 0; }
+
 /** @brief Check the steering wheel potentiometer position */
-int checkSteeringWheelPos() { return analogRead(STR_WHL_POT); }
+int checkSteeringWheelPos() { return steering_encoder_ticks; }
 
 /** @brief Report the steeting wheel position to the bus  */
 int postSteeringWheelPos() {
