@@ -17,12 +17,10 @@
 #include <module.h>
 #include <mcp4xxx.h>
 
-// Accelerator Input
-#define ACCEL_INPUT_SEL 7
+using namespace icecave::arduino;
 
 // Activity Control
 #define ACT_SW 4
-#define ACT_SEL 3
 
 // Direction Control
 #define FWD_REV_SEL 5
@@ -30,21 +28,28 @@ volatile bool buzzer_enabled = false;
 uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
+volatile bool manual_accel = false;
+mcp4xxx* mcp4151(SPEED_CTRL_CS);
 #define SPEED_CTRL_CS 9
 #define NO_DIGIPOT_READ
 #define RESET_BY_DECREMENT
-
-mcp4xxx* mcp4151(SPEED_CTRL_CS);
-
-using namespace icecave::arduino;
 
 #ifdef NO_DIGIPOT_READ
     volatile uint8_t wiper_pos = 0;
     
 #endif
 
+// Accelerator Pedal
+#define PEDAL_IN A3
+#define PEDAL_SW 3
+
 // CAN
 #define CAN_CS 10
+#define CAN_INT 2
+
+// Timing
+long time_since_update = 0;
+#define UPDATE_INTERVAL 5000
 
 // --------- Arduino
 
@@ -83,11 +88,12 @@ void setup() {
 
     // Setup Interupts
     attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
-    // Relay setup
+    // Setup
     setupDirectionSelector();
-    setupAcceleratorSelector();
     setupActivitySwitch();
+    setupPedal();
 
 }
 
@@ -97,12 +103,23 @@ void setup() {
  */
 
 void loop() {
-    postAccelSetting();
-    postDirection();
-    postMovementEnabled();
+    if (manual_accel) {
+        setAccelPos((postPedalPos() / 4) >> 8);
+        delay(10);
 
-    delay(10000);
+    }
 
+    if (millis() - time_since_update > UPDATE_INTERVAL) {
+        postAccelSetting();
+        postDirection();
+        postMovementEnabled();
+
+        if (!manual_accel) {
+            postPedalPos();
+            delay(100);
+
+        }
+    }
 }
 
 /**
@@ -337,31 +354,14 @@ void postBuzzerEnable() {
 
 // --------- Speed Control
 
-/** @brief Set up the accelerator selector */
-void setupAcceleratorSelector() {
-    pinMode(ACT_SEL, OUTPUT);
-    pinMode(ACCEL_INPUT_SEL, OUTPUT);
-
-    enableManualAccelInput();
-
-}
-
 /** @brief Disable manual accelerator input and enable auto speed control */
-void disableManualAccelInput() {
-    digitalWrite(ACT_SEL, HIGH);
-    digitalWrite(ACCEL_INPUT_SEL, HIGH);
-
-}
+void disableManualAccelInput() { manual_accel = false; }
 
 /** @brief Enable manual selector input  */
-void enableManualAccelInput() {
-    digitalWrite(ACT_SEL, LOW);
-    digitalWrite(ACCEL_INPUT_SEL, LOW);
-    
-}
+void enableManualAccelInput() { manual_accel = true; }
 
 /** @brief Check if manual accelerator input */
-bool isManualAccelInput() { return digitalRead(ACT_SEL) == LOW; }
+bool isManualAccelInput() { return manual_accel; }
 
 /** @brief Post manual acclerator status */
 bool postManualAccelInput() {
@@ -459,6 +459,48 @@ uint8_t postAccelSetting() {
 
     // Return value
     return wiper_pos;
+
+}
+
+// --------- Manual Accelerator Pedal
+
+/** @brief Setup the pedal */
+void setupPedal() {
+    pinMode(PEDAL_IN, INPUT);
+    pinMode(PEDAL_SW, INPUT);
+
+}
+
+/** @brief Read the pedal pos */
+int readPedalPos() { return analogRead(PEDAL_IN); }
+
+/** @brief Post the pedal pos*/
+int postPedalPos() {
+    // Build Message
+    int pedal_pos = readPedalPos();
+    uint8_t data[2] = { (pedal_pos >> 8), (pedal_pos & 0xFF)};
+    uint8_t message[8] = {};
+    sendCANMessage(m_can_id, message);
+
+    // Return value
+    return pedal_pos;
+
+}
+
+/** @brief The Accelerator Pedal is Pressed */
+void pedalPressed() {
+    // Build Message
+    uint8_t message[8] = {};
+    sendCANMessage(m_can_id, message);
+
+    // Enable the movement relay if the pedal is pressed
+    if (manual_accel) {
+        enableMovement();
+
+    }
+
+    // Attach Interupt
+    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
 }
 
