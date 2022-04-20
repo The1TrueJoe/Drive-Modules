@@ -7,3 +7,6 @@
 [submodule "arduino"]
 	path = revision_1/std_modules/ArduinoCore-avr
 	url = https://github.com/GSSM-AutoGolfCart/ArduinoCore-avr
+[submodule "stm32"]
+	path = revision_3/lib/libopencm3
+	url = https://github.com/GSSM-AutoGolfCart/libopencm3
