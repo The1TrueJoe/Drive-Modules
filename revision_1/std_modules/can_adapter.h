@@ -9,8 +9,8 @@
 #define Default_CAN_INT 2
 
 //  Message Buffer
-volatile struct can_frame can_msg_in;
-volatile struct can_frame can_msg_out;
+struct can_frame can_msg_in;
+struct can_frame can_msg_out;
 
 // CAN Info
 uint32_t m_can_id = 0x000;
