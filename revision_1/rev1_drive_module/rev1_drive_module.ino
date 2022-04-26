@@ -208,6 +208,10 @@ void canLoop() {
                             decAccelPos();
                             break;
 
+                        case 0x0D:
+                            zeroAccelPos();
+                            break;
+
                         default:
                             break;
                     }
