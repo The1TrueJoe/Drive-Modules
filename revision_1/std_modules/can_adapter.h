@@ -13,6 +13,9 @@
  * 
  */
 
+#ifndef Can_Adapter_H
+#define Can_Adapter_H
+
 // --------- Lib
 #include <Arduino.h>
 
@@ -24,15 +27,15 @@
 #define Default_CAN_INT 2
 
 //  Message Buffer
-struct can_frame can_msg_in;
-struct can_frame can_msg_out;
+extern struct can_frame can_msg_in;
+extern struct can_frame can_msg_out;
 
 // CAN Info
-uint32_t m_can_id = 0x000;
-uint8_t m_can_dlc = 8;
+extern uint32_t m_can_id = 0x000;
+extern uint8_t m_can_dlc = 8;
 
 // Adapter
-MCP2515* can_adapter;
+extern MCP2515* can_adapter;
 
 // EEPROM
 #ifdef USES_EEPROM
@@ -65,3 +68,5 @@ bool getCANMessage();
 
 // Send message
 void sendCANMessage(uint32_t id, uint8_t m_data[8]);
+
+#endif
