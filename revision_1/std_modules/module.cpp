@@ -70,7 +70,7 @@ void holdTillEnabled() {
         bool equal_message = true; 
 
         for (int i = 0; i < sizeof(enabled_message); i++) {
-            if (enabled_message[i] != can_msg_in.data[i]) {
+            if (enabled_message[i] != can_adapter.can_msg_in.data[i]) {
                 equal_message = false;
                 break;
 
