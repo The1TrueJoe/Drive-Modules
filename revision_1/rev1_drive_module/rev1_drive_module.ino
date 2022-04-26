@@ -383,6 +383,9 @@ void zeroAccelPos() {
         mcp4151->write(0);
     
     #endif
+
+    postAccelSetting();
+
 }
 
 /** @brief Set the accelerator digital pot position */
