@@ -52,10 +52,10 @@ long time_since_update = 0;
 
 void setup() {
     // CAN ID
-    m_can_id = drive_module_address;
+    can_adapter -> m_can_id = drive_module_address;
 
     // Standard module setup
-    standardModuleSetup(CAN_CS);
+    standardModuleSetup(CAN_CS, 0xFF6);
 
     // Announce Ready
     #ifdef HOLD
@@ -107,21 +107,21 @@ void loop() {
 
 void canLoop() {
     // Get message
-    if (!getCANMessage()) { return; }
+    if (!can_adapter -> getCANMessage()) { return; }
 
     standardModuleLoopHead();
 
-    switch (can_msg_in.data[0]) {
+    switch (can_adapter -> can_msg_in.data[0]) {
         case 0x0A:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0xA:
-                            setAccelPos(can_msg_in.data[3]);
+                            setAccelPos(can_adapter -> can_msg_in.data[3]);
                             break;
 
                         case 0x0D:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableManualAccelInput();
                                     break;
@@ -137,7 +137,7 @@ void canLoop() {
                             break;
 
                         case 0x0E:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableMovement();
                                     break;
@@ -159,7 +159,7 @@ void canLoop() {
                     break;
 
                 case 0x0D:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x01:
                             forward();
                             break;
@@ -169,7 +169,7 @@ void canLoop() {
                             break;
 
                         case 0x0B:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableBuzzerCtrl();
                                     break;
@@ -197,9 +197,9 @@ void canLoop() {
             break;
 
         case 0x0B:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x01:
                             incAccelPos();
                             break;
@@ -225,9 +225,9 @@ void canLoop() {
             break;
 
         case 0x0C:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
                             postAccelSetting();
                             break;
@@ -286,7 +286,7 @@ void forward() {
     // Buzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_module_address, message);
+        can_adapter -> sendCANMessage(accessory_module_address, message);
 
     }
     
@@ -301,7 +301,7 @@ void reverse() {
     // Buzzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_module_address, message);
+        can_adapter -> sendCANMessage(accessory_module_address, message);
 
     }
 
@@ -313,10 +313,10 @@ bool isForwards() { return digitalRead(FWD_REV_SEL) == LOW; }
 /** @brief Post the current direction of the drive system */
 void postDirection() {
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0D, getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0D, can_adapter -> getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
 
     // Send Message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
 
@@ -329,8 +329,8 @@ void enableBuzzerCtrl() { buzzer_enabled = true; }
 /** @brief Report the buzzer enable statis*/
 void postBuzzerEnable() {
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0B, getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0B, can_adapter -> getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
 
@@ -357,8 +357,8 @@ bool postManualAccelInput() {
     int condition = isManualAccelInput();
 
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, can_adapter -> getCANBoolean(condition), 0x00, 0x00, 0x00};
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition
     return condition;
@@ -465,7 +465,7 @@ uint8_t getAccelSetting() {
 uint8_t postAccelSetting() {
     // Build Message
     uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0A, getAccelSetting(), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return value
     return wiper_pos;
@@ -490,7 +490,7 @@ int postPedalPos() {
     int pedal_pos = readPedalPos();
     uint8_t data[2] = { (pedal_pos >> 8), (pedal_pos & 0xFF)};
     uint8_t message[8] = {};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return value
     return pedal_pos;
@@ -501,7 +501,7 @@ int postPedalPos() {
 void pedalPressed() {
     // Build Message
     uint8_t message[8] = {};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Enable the movement relay if the pedal is pressed
     if (manual_accel) {
@@ -546,8 +546,8 @@ bool postMovementEnabled() {
     int condition = isMovementEnabled();
 
     // Build Message
-    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, can_adapter -> getCANBoolean(condition), 0x00, 0x00, 0x00};
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition
     return condition;

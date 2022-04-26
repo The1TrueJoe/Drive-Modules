@@ -30,7 +30,7 @@ void standardModuleSetup(int CAN_CS_PIN, uint32_t id) {
     #endif
 
     // Setup the can bus transceiver
-    can_adapter.setupCAN(CAN_CS_PIN, id);
+    can_adapter -> setupCAN(CAN_CS_PIN, id);
 
 }
 
@@ -46,7 +46,7 @@ void ready() {
         Serial.println("Module Ready")
     #endif
 
-    can_adapter.sendCANMessage(master_can_id, message);
+    can_adapter -> sendCANMessage(master_can_id, message);
 
 }
 
@@ -64,13 +64,13 @@ void holdTillEnabled() {
     #endif
 
     ready();
-    can_adapter.getCANMessage();
+    can_adapter -> getCANMessage();
 
     while (!enabled) {
         bool equal_message = true; 
 
         for (int i = 0; i < sizeof(enabled_message); i++) {
-            if (enabled_message[i] != can_adapter.can_msg_in.data[i]) {
+            if (enabled_message[i] != can_adapter -> can_msg_in.data[i]) {
                 equal_message = false;
                 break;
 
@@ -85,7 +85,7 @@ void holdTillEnabled() {
             #endif
 
             ready();
-            can_adapter.getCANMessage();
+            can_adapter -> getCANMessage();
 
         } else {
             #ifdef DEBUG
