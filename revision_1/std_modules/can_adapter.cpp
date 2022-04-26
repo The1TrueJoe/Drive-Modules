@@ -42,12 +42,12 @@ void setupCAN(int CS_PIN) {
     #endif
 
     // Init
-    mcp2515 = new MCP2515(CS_PIN);
+    can_adapter = new MCP2515(CS_PIN);
 
     // Reset and set
-    mcp2515 -> reset();
-    mcp2515 -> setBitrate(CAN_125KBPS);
-    mcp2515 -> setNormalMode();
+    can_adapter -> reset();
+    can_adapter -> setBitrate(CAN_125KBPS);
+    can_adapter -> setNormalMode();
 
     #ifdef DEBUG
         // Log done
@@ -64,7 +64,7 @@ void setupCAN(int CS_PIN) {
  */
 
 bool getCANMessage() {
-    if (mcp2515 -> readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+    if (can_adapter -> readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
         if (can_msg_in.can_id == m_can_id) {
             #ifdef DEBUG
                 printReceivedCANMessage();
@@ -116,7 +116,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     #endif
 
     // Send message
-    mcp2515 -> sendMessage(&can_msg_out);
+    can_adapter -> sendMessage(&can_msg_out);
 
 }
 

@@ -32,7 +32,7 @@ uint32_t m_can_id = 0x000;
 uint8_t m_can_dlc = 8;
 
 // Adapter
-MCP2515* mcp2515;
+MCP2515* can_adapter;
 
 // EEPROM
 #ifdef USES_EEPROM
