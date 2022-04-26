@@ -21,7 +21,7 @@
     #include "id_light.h"
 #endif
 
-CAN_Adapter *can_adapter;
+static CAN_Adapter *can_adapter;
 
 void standardModuleSetup(int CAN_CS_PIN = Default_CAN_CS, uint32_t id = 0x000);
 void standardModuleLoopHead();
