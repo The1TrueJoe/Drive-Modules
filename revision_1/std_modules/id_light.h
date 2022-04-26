@@ -23,8 +23,7 @@
 #define ID_LIGHT_GREEN A1
 #define ID_LIGHT_BLUE A2
 
-public:
-    void setupIDLight();
-    void setIDLightColor(int red, int green, int blue);
-    void errorLight();
-    void offLight();
+void setupIDLight();
+void setIDLightColor(int red, int green, int blue);
+void errorLight();
+void offLight();
