@@ -20,7 +20,7 @@
  * 
  */
 
-void standardModuleSetup(int CAN_CS_PIN) {
+void standardModuleSetup(int CAN_CS_PIN, uint32_t id) {
     // Init serial port
     Serial.begin(115200);
 
@@ -30,7 +30,7 @@ void standardModuleSetup(int CAN_CS_PIN) {
     #endif
 
     // Setup the can bus transceiver
-    setupCAN(CAN_CS_PIN);
+    setupCAN(CAN_CS_PIN, id);
 
 }
 

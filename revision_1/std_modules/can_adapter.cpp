@@ -18,7 +18,7 @@
 // --------- CAN
 
 /** @brief Setup the CAN transceiver */
-void setupCAN(int CS_PIN) {
+void setupCAN(int CS_PIN, uint32_t id) {
     #ifdef USES_EEPROM
         // Get address from eeprom
         Serial.println("CAN Transceiver: Loading CAN Address");
@@ -48,6 +48,9 @@ void setupCAN(int CS_PIN) {
     can_adapter -> reset();
     can_adapter -> setBitrate(CAN_125KBPS);
     can_adapter -> setNormalMode();
+
+    // ID
+    m_can_id = id;
 
     #ifdef DEBUG
         // Log done
