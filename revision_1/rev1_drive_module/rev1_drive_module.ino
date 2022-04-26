@@ -14,38 +14,30 @@
  */
 
 // Libraries
-#include <module.h>
-#include <mcp4xxx.h>
+#include "module.h"
+#include "port_config.h"
+#include "arduino-mcp4xxx/mcp4xxx.h"
 
+// Settings
+#define NO_DIGIPOT_READ
+#define RESET_BY_DECREMENT
+//#define HOLD
+//#define DEBUG
+
+// DigiPot Namespace
 using namespace icecave::arduino;
 
-// Activity Control
-#define ACT_SW 4
-
-// Direction Control
-#define FWD_REV_SEL 5
+// Buzzer
 volatile bool buzzer_enabled = false;
-uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
 volatile bool manual_accel = false;
-mcp4xxx* mcp4151(SPEED_CTRL_CS);
-#define SPEED_CTRL_CS 9
-#define NO_DIGIPOT_READ
-#define RESET_BY_DECREMENT
+MCP4XXX* mcp4151;
 
 #ifdef NO_DIGIPOT_READ
     volatile uint8_t wiper_pos = 0;
     
 #endif
-
-// Accelerator Pedal
-#define PEDAL_IN A3
-#define PEDAL_SW 3
-
-// CAN
-#define CAN_CS 10
-#define CAN_INT 2
 
 // Timing
 long time_since_update = 0;
@@ -60,37 +52,23 @@ long time_since_update = 0;
 
 void setup() {
     // CAN ID
-    m_can_id = speed_module_default_address;
+    m_can_id = drive_module_address;
 
     // Standard module setup
     standardModuleSetup(CAN_CS);
 
     // Announce Ready
-    ready();
-    holdTillEnabled();
-
-    #ifdef RESET_BY_DECREMENT
-        #ifdef DEBUG
-            Serial.println("Reseting Wiper Pos by Decrementing");
-
-        #endif
-
-        // Reset Wiper
-        for (int i = 0; i < 260; i++) {
-            mcp4151->decrement();
-            
-        }
-
-    #else
-        mcp4151->write(0);
-    
+    #ifdef HOLD
+        ready();
+        holdTillEnabled();
     #endif
 
     // Setup Interupts
-    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
     // Setup
+    setupAccelerator();
     setupDirectionSelector();
     setupActivitySwitch();
     setupPedal();
@@ -129,7 +107,7 @@ void loop() {
 
 void canLoop() {
     // Get message
-    if (!getCANMessage()) { return: }
+    if (!getCANMessage()) { return; }
 
     standardModuleLoopHead();
 
@@ -196,7 +174,7 @@ void canLoop() {
                                     enableBuzzerCtrl();
                                     break;
 
-                                case 0x0@:
+                                case 0x02:
                                     disableBuzzerCtrl();
                                     break;
 
@@ -304,7 +282,7 @@ void forward() {
     // Buzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_control_address, message);
+        sendCANMessage(accessory_module_address, message);
 
     }
     
@@ -319,7 +297,7 @@ void reverse() {
     // Buzzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_control_address, message);
+        sendCANMessage(accessory_module_address, message);
 
     }
 
@@ -354,6 +332,13 @@ void postBuzzerEnable() {
 
 // --------- Speed Control
 
+/** @brief Setup the accelerator */
+void setupAccelerator() {
+    mcp4151 = new MCP4XXX(SPEED_CTRL_CS);
+    zeroAccelPos();
+
+}
+
 /** @brief Disable manual accelerator input and enable auto speed control */
 void disableManualAccelInput() { manual_accel = false; }
 
@@ -375,6 +360,26 @@ bool postManualAccelInput() {
     return condition;
 
 } 
+
+/** @brief Zeroes the accelerator position */
+void zeroAccelPos() {
+    #ifdef RESET_BY_DECREMENT
+        #ifdef DEBUG
+            Serial.println("Reseting Wiper Pos by Decrementing");
+
+        #endif
+
+        // Reset Wiper
+        for (int i = 0; i < 260; i++) {
+            mcp4151->decrement();
+            
+        }
+
+    #else
+        mcp4151->write(0);
+    
+    #endif
+}
 
 /** @brief Set the accelerator digital pot position */
 void setAccelPos(uint8_t pos) {
@@ -401,8 +406,6 @@ void setAccelPos(uint8_t pos) {
 
             }
         }
-
-        for (int i = )
 
     #else
         mcp4151->write(pos);
@@ -500,7 +503,7 @@ void pedalPressed() {
     }
 
     // Attach Interupt
-    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
 }
 
