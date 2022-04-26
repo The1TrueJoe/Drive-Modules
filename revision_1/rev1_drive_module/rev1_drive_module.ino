@@ -32,7 +32,7 @@ volatile bool buzzer_enabled = false;
 
 // Digital Potentiometer
 volatile bool manual_accel = false;
-MCP4XXX* mcp4151;
+MCP4XXX* digi_pot;
 
 #ifdef NO_DIGIPOT_READ
     volatile uint8_t wiper_pos = 0;
@@ -338,7 +338,7 @@ void postBuzzerEnable() {
 
 /** @brief Setup the accelerator */
 void setupAccelerator() {
-    mcp4151 = new MCP4XXX(SPEED_CTRL_CS);
+    digi_pot = new MCP4XXX(SPEED_CTRL_CS);
     zeroAccelPos();
 
 }
@@ -375,12 +375,12 @@ void zeroAccelPos() {
 
         // Reset Wiper
         for (int i = 0; i < 260; i++) {
-            mcp4151->decrement();
+            digi_pot->decrement();
             
         }
 
     #else
-        mcp4151->write(0);
+        digi_pot->write(0);
     
     #endif
 
@@ -395,7 +395,7 @@ void setAccelPos(uint8_t pos) {
 
         if (current_pos > pos) {
             for (int i = current_pos; i < pos; i++) {
-                mcp4151->increment();
+                digi_pot->increment();
 
                 #ifdef NO_DIGIPOT_READ
                     wiper_pos++;
@@ -405,7 +405,7 @@ void setAccelPos(uint8_t pos) {
 
         } else if (current_pos < pos) {
             for (int i = current_pos; i > pos; i--) {
-                mcp4151->decrement();
+                digi_pot->decrement();
 
                 #ifdef NO_DIGIPOT_READ
                     wiper_pos--;
@@ -415,7 +415,7 @@ void setAccelPos(uint8_t pos) {
         }
 
     #else
-        mcp4151->write(pos);
+        digi_pot->write(pos);
 
     #endif
 
@@ -425,7 +425,7 @@ void setAccelPos(uint8_t pos) {
 
 /** @brief Increment the accelerator digital pot position */
 void incAccelPos() { 
-    mcp4151->increment();
+    digi_pot -> increment();
 
     #ifdef NO_DIGIPOT_READ
         wiper_pos++;
@@ -438,7 +438,7 @@ void incAccelPos() {
 
 /** @brief Decrement the accelerator digital pot position */
 void decAccelPos() { 
-    mcp4151->increment();
+    digi_pot->increment();
 
     #ifdef NO_DIGIPOT_READ
         wiper_pos--;
@@ -455,7 +455,7 @@ uint8_t getAccelSetting() {
         return wiper_pos;
 
     #else
-        return mcp4151->readWiper();
+        return digi_pot->readWiper();
 
     #endif
 
