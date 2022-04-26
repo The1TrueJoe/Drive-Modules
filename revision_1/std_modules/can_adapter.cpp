@@ -18,7 +18,7 @@
 // --------- CAN
 
 /** @brief Setup the CAN transceiver */
-void setupCAN(int CS_PIN, uint32_t id) {
+void CAN_Adapter::setupCAN(int CS_PIN, uint32_t id) {
     #ifdef USES_EEPROM
         // Get address from eeprom
         Serial.println("CAN Transceiver: Loading CAN Address");
@@ -42,12 +42,12 @@ void setupCAN(int CS_PIN, uint32_t id) {
     #endif
 
     // Init
-    can_adapter = new MCP2515(CS_PIN);
+    can_module = new MCP2515(CS_PIN);
 
     // Reset and set
-    can_adapter -> reset();
-    can_adapter -> setBitrate(CAN_125KBPS);
-    can_adapter -> setNormalMode();
+    can_module -> reset();
+    can_module -> setBitrate(CAN_125KBPS);
+    can_module -> setNormalMode();
 
     // ID
     m_can_id = id;
@@ -66,8 +66,8 @@ void setupCAN(int CS_PIN, uint32_t id) {
  * @return false If message is invalid or id's do not match
  */
 
-bool getCANMessage() {
-    if (can_adapter -> readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+bool CAN_Adapter::getCANMessage() {
+    if (can_module -> readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
         if (can_msg_in.can_id == m_can_id) {
             #ifdef DEBUG
                 printReceivedCANMessage();
@@ -89,7 +89,7 @@ bool getCANMessage() {
  * @param m_data Data to send to the CAN device
  */
 
-void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
+void CAN_Adapter::sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     // Assign ID
     can_msg_out.can_id = id;
 
@@ -103,7 +103,37 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
     }
 
     #ifdef DEBUG
+        printOutgoingCANMessage();
+    
+    #endif
 
+    // Send message
+    can_module -> sendMessage(&can_msg_out);
+
+}
+
+/**
+ * @brief Send a message of the can bus
+ * 
+ * @param id ID of the CAN device to send message to
+ * @param m_data Data to send to the CAN device
+ */
+
+void CAN_Adapter::sendCANMessage() {
+    #ifdef DEBUG
+        printOutgoingCANMessage();
+    
+    #endif
+
+    // Send message
+    can_module -> sendMessage(&can_msg_out);
+
+}
+
+#ifdef DEBUG
+
+    /** @brief Print out the outgoing message */
+    void CAN_Adapter::printOutgoingCANMessage() {
         // Start log
         Serial.print("CAN-TX: (" + String(can_msg_out.can_id) + ") ");
 
@@ -116,17 +146,10 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
         // New Line
         Serial.println();
 
-    #endif
-
-    // Send message
-    can_adapter -> sendMessage(&can_msg_out);
-
-}
-
-#ifdef DEBUG
+    }
 
     /** @brief Print out the received can frame*/
-    void printReceivedCANMessage() {
+    void CAN_Adapter::printReceivedCANMessage() {
         // Start log
         Serial.print("CAN-RX: (" + String(can_msg_in.can_id) + ") ");
 
@@ -153,7 +176,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
      * @param value Value
      */
 
-    void writeEEPROM32bit(int address, uint32_t value) {
+    void CAN_Adapter::writeEEPROM32bit(int address, uint32_t value) {
         byte one = (value & 0xFF);
         byte two = ((value >> 8) & 0xFF);
         byte three = ((value >> 16) & 0xFF);
@@ -174,7 +197,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
      * @return uint32_t 32 bit value 
      */
 
-    uint32_t readEEPROM32bit(int address) {
+    uint32_t CAN_Adapter::readEEPROM32bit(int address) {
         uint32_t four = EEPROM.read(address);
         uint32_t three = EEPROM.read(address + 1);
         uint32_t two = EEPROM.read(address + 2);
@@ -192,7 +215,7 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
  * @param new_can_addr New can address
  */
 
-void setCANAddress(uint32_t new_can_addr) { 
+void CAN_Adapter::setCANAddress(uint32_t new_can_addr) { 
     m_can_id = new_can_addr;
 
     #ifdef USES_EEPROM
@@ -210,10 +233,10 @@ void setCANAddress(uint32_t new_can_addr) {
  * @return uint8_t (0x01 - True) or (0x02 - False)
  */
 
-uint8_t getCANBoolean(bool condition) { return condition ? 0x01 : 0x02; }
+uint8_t CAN_Adapter::getCANBoolean(bool condition) { return condition ? 0x01 : 0x02; }
 
 /** @brief Convert an 8 bit integer into a standard integer  */
-int convertToInt(uint8_t incoming_int) {
+int CAN_Adapter::convertToInt(uint8_t incoming_int) {
     int new_int = incoming_int << 8;
 
     if (new_int < 0) { new_int = new_int * -1; }
@@ -224,7 +247,7 @@ int convertToInt(uint8_t incoming_int) {
 }
 
 /** @brief Convert two 8 bit integers into a standard integer  */
-int convertToInt(uint8_t int_1, uint8_t int_2) {
+int CAN_Adapter::convertToInt(uint8_t int_1, uint8_t int_2) {
     int new_int = (int_1 << 8) | int_2;
 
 }
