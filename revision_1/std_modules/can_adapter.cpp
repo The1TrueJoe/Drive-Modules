@@ -1,3 +1,18 @@
+/**
+ * @file can_adapter.cpp
+ * 
+ * @author Joseph Telaak
+ * 
+ * @brief CAN adapter control
+ * 
+ * @version 0.1
+ * 
+ * @date 2022-04-26
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include "can_adapter.h"
 
 // --------- CAN
@@ -9,7 +24,7 @@ void setupCAN(int CS_PIN) {
         Serial.println("CAN Transceiver: Loading CAN Address");
     
         if (m_can_id == 0x000) {
-            uint32_t new_addr = getCANAddress();
+            uint32_t new_addr = readEEPROM32bit(0);
 
             if (new_addr == 0x000) {
 
@@ -165,14 +180,6 @@ void sendCANMessage(uint32_t id, uint8_t m_data[8]) {
         return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) = ((one << 24) & 0xFFFFFFFF);
 
     }
-
-    /**
-     * @brief Get the CAN address stored in EEPROM
-     * 
-     * @return uint32_t CAN Address
-     */
-
-    uint32_t getCANAddress() { return readEEPROM32bit(0); }
 
 #endif
 

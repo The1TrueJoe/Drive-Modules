@@ -1,8 +1,23 @@
+/**
+ * @file can_adapter.h
+ * 
+ * @author Joseph Telaak
+ * 
+ * @brief CAN adapter control
+ * 
+ * @version 0.1
+ * 
+ * @date 2022-04-26
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 // --------- Lib
 #include <Arduino.h>
 
 // Can Lib
-#include "mcp2515.h"
+#include "arduino-mcp2515/mcp2515.h"
 
 // CAN Pins
 #define Default_CAN_CS 10
@@ -24,29 +39,29 @@ MCP2515* mcp2515;
     #include <EEPROM.h>
 #endif
 
-private:
-    // CAN
+// CAN
+#ifdef DEBUG
     void printReceivedCANMessage();
-    void setCANAddress(uint32_t new_can_addr);
-    uint8_t getCANBoolean(bool condition);
+#endif
 
-    // EEPROM
-    #ifdef USES_EEPROM
-        void writeEEPROM32bit(int address, uint32_t value);
-        uint32_t readEEPROM32bit(int address);
-        uint32_t getCANAddress();
-    #endif
-    
-    // Utils
-    int convertToInt(uint8_t incoming_int);
-    int convertToInt(uint8_t int_1, uint8_t int_2);
+void setCANAddress(uint32_t new_can_addr);
+uint8_t getCANBoolean(bool condition);
 
-public:
-    // Setup CAN
-    void setupCAN(int CS_PIN = Default_CAN_CS, uint32_t id);
+// EEPROM
+#ifdef USES_EEPROM
+    void writeEEPROM32bit(int address, uint32_t value);
+    uint32_t readEEPROM32bit(int address);
+#endif
 
-    // Get message
-    bool getCANMessage();
+// Utils
+int convertToInt(uint8_t incoming_int);
+int convertToInt(uint8_t int_1, uint8_t int_2);
 
-    // Send message
-    void sendCANMessage(uint32_t id, uint8_t m_data[8]);
+// Setup CAN
+void setupCAN(int CS_PIN = Default_CAN_CS, uint32_t id);
+
+// Get message
+bool getCANMessage();
+
+// Send message
+void sendCANMessage(uint32_t id, uint8_t m_data[8]);
