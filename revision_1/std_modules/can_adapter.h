@@ -20,7 +20,7 @@
 #include <Arduino.h>
 
 // Can Lib
-#include "arduino-mcp2515/mcp2515.h"
+#include "mcp2515.h"
 
 // EEPROM
 #ifdef USES_EEPROM
