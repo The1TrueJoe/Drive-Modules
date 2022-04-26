@@ -58,7 +58,7 @@ int convertToInt(uint8_t incoming_int);
 int convertToInt(uint8_t int_1, uint8_t int_2);
 
 // Setup CAN
-void setupCAN(int CS_PIN = Default_CAN_CS, uint32_t id);
+void setupCAN(int CS_PIN = Default_CAN_CS, uint32_t id = 0x000);
 
 // Get message
 bool getCANMessage();
