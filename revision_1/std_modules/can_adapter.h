@@ -51,11 +51,6 @@ class CAN_Adapter {
         bool getCANMessage();
         void sendCANMessage(uint32_t id, uint8_t m_data[8]);
         void sendCANMessage();
-
-        uint8_t getCANBoolean(bool condition);
-
-        int convertToInt(uint8_t incoming_int);
-        int convertToInt(uint8_t int_1, uint8_t int_2);
     
     private:
 
@@ -70,5 +65,10 @@ class CAN_Adapter {
         #endif
 
 };
+
+uint8_t getCANBoolean(bool condition);
+
+int convertToInt(uint8_t incoming_int);
+int convertToInt(uint8_t int_1, uint8_t int_2);
 
 #endif

@@ -233,10 +233,10 @@ void CAN_Adapter::setCANAddress(uint32_t new_can_addr) {
  * @return uint8_t (0x01 - True) or (0x02 - False)
  */
 
-uint8_t CAN_Adapter::getCANBoolean(bool condition) { return condition ? 0x01 : 0x02; }
+uint8_t getCANBoolean(bool condition) { return condition ? 0x01 : 0x02; }
 
 /** @brief Convert an 8 bit integer into a standard integer  */
-int CAN_Adapter::convertToInt(uint8_t incoming_int) {
+int convertToInt(uint8_t incoming_int) {
     int new_int = incoming_int << 8;
 
     if (new_int < 0) { new_int = new_int * -1; }
@@ -247,7 +247,7 @@ int CAN_Adapter::convertToInt(uint8_t incoming_int) {
 }
 
 /** @brief Convert two 8 bit integers into a standard integer  */
-int CAN_Adapter::convertToInt(uint8_t int_1, uint8_t int_2) {
+int convertToInt(uint8_t int_1, uint8_t int_2) {
     int new_int = (int_1 << 8) | int_2;
 
 }
