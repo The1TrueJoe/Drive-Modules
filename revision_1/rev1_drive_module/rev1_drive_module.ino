@@ -16,7 +16,7 @@
 // Libraries
 #include "module.h"
 #include "port_config.h"
-#include "arduino-mcp4xxx/mcp4xxx.h"
+#include "mcp4xxx.h"
 
 // Settings
 #define NO_DIGIPOT_READ
@@ -313,7 +313,7 @@ bool isForwards() { return digitalRead(FWD_REV_SEL) == LOW; }
 /** @brief Post the current direction of the drive system */
 void postDirection() {
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0D, can_adapter -> getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0D, getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
 
     // Send Message
     can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
@@ -329,7 +329,7 @@ void enableBuzzerCtrl() { buzzer_enabled = true; }
 /** @brief Report the buzzer enable statis*/
 void postBuzzerEnable() {
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0B, can_adapter -> getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0B, getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
     can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
@@ -357,7 +357,7 @@ bool postManualAccelInput() {
     int condition = isManualAccelInput();
 
     // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, can_adapter -> getCANBoolean(condition), 0x00, 0x00, 0x00};
+    uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, getCANBoolean(condition), 0x00, 0x00, 0x00};
     can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition
@@ -546,7 +546,7 @@ bool postMovementEnabled() {
     int condition = isMovementEnabled();
 
     // Build Message
-    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, can_adapter -> getCANBoolean(condition), 0x00, 0x00, 0x00};
+    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, getCANBoolean(condition), 0x00, 0x00, 0x00};
     can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition

@@ -13,31 +13,11 @@
  */
 
 #include "module.h"
-
-// --------- Definitions
-
-// Relays
-#define LEFT_TAIL_RELAY 8
-#define RIGHT_TAIL_RELAY 7
-#define TAIL_LIGHT_RELAY 6
-#define HEAD_LIGHT_RELAY 5
-#define REAR_BUZZ_RELAY 4
-#define HORN_RELAY 9
-
-// Relay IDs
-#define right_tail_id 0x00
-#define left_tail_id 0x01
-#define head_light_id 0x02
-#define tail_light_id 0x03
-#define horn_id 0x04
-#define rear_buzz_id 0x05
-
-// Brake Pedal
-#define BRAKE_PEDAL 3
+#include "port_config.h"
 
 // Time
 volatile bool continue_loop = true;
-volatile int def_blinking_interval = 2000;
+volatile int def_blink_interval = 2000;
 volatile int def_horn_interval = 50;
 
 // --------- Arduino
@@ -48,19 +28,16 @@ volatile int def_horn_interval = 50;
  */
 
 void setup() {
-    // CAN ID
-    m_can_id = accessory_module_default_address;
-
     // Standard module setup
-    standardModuleSetup();
+    standardModuleSetup(10, 0xFF2);
 
     // Announce Ready
     ready();
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(digitalPinToInterrupt(Default_CAN_INT), canLoop, FALLING);
-    attachInterupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
+    attachInterrupt(digitalPinToInterrupt(Default_CAN_INT), canLoop, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
 
     // Relay setup
     setupRelays();
@@ -73,16 +50,16 @@ void setup() {
  */
 
 void loop() {
-    switch (can_msg_in.data[0]) {
+    switch (can_adapter -> can_msg_in.data[0]) {
         case 0x0B:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0B:
-                    int interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_blink_interval;
-                    int id = can_msg_in.data[2];
+                    int m_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_blink_interval;
+                    int id = can_adapter -> can_msg_in.data[2];
 
                     while (continue_loop) {
                         closeRelay(id);
-                        delay(interval);
+                        delay(m_interval);
                         openRelay(id);
 
                     }
@@ -91,10 +68,10 @@ void loop() {
 
 
                 case 0x01:
-                    int interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_horn_interval;
+                    int n_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_horn_interval;
 
                     closeRelay(horn_id);
-                    delay(interval);
+                    delay(n_interval);
                     openRelay(horn_id);
 
                     break;
@@ -119,19 +96,19 @@ void loop() {
 
 void canLoop() {
     // Get message
-    if (!getCANMessage()) { return: }
+    if (!can_adapter -> getCANMessage()) { return; }
 
     standardModuleLoopHead();
 
-    switch (can_msg_in.data[0]) {
+    switch (can_adapter -> can_msg_in.data[0]) {
         case 0x0A:
-            switch (can_msg_in.data[2]) {
+            switch (can_adapter -> can_msg_in.data[2]) {
                 case 0x01:
-                    openRelay(can_msg_in.data[1]);
+                    openRelay(can_adapter -> can_msg_in.data[1]);
                     break;
 
                 case 0x02:
-                    closeRelay(can_msg_in.data[1]);
+                    closeRelay(can_adapter -> can_msg_in.data[1]);
                     continue_loop = false;
                     break;
 
@@ -143,19 +120,19 @@ void canLoop() {
             break;
 
         case 0x0C:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    postRelayStatus(can_msg_in.data[2]);
+                    postRelayStatus(can_adapter -> can_msg_in.data[2]);
                     break;
 
                 case 0x0E:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x01:
-                            def_blink_interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_blink_interval;
+                            def_blink_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_blink_interval;
                             break;
 
                         case 0x02:
-                            def_horn_interval = (can_msg_in.data[3] != 0x00) ? (convertToInt(can_msg_in.data[3]) * convertToInt(can_msg_in.data[4])) : def_horn_interval;
+                            def_horn_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_horn_interval;
                             break;
 
                         default:
@@ -186,14 +163,14 @@ void canLoop() {
 /** @brief When pedal is pressed */
 void pedalPressed() {
     closeRelay(tail_light_id);
-    attachInterupt(BRAKE_PEDAL, pedalReleased, FALLING);
+    attachInterrupt(BRAKE_PEDAL, pedalReleased, FALLING);
 
 }
 
 /** @brief When pedal is released */
 void pedalReleased() {
     openRelay(tail_light_id);
-    attachInterupt(BRAKE_PEDAL, pedalPressed, RISING);
+    attachInterrupt(BRAKE_PEDAL, pedalPressed, RISING);
 
 }
 
@@ -258,7 +235,7 @@ void closeRelay(uint8_t id) {
             digitalWrite(HEAD_LIGHT_RELAY, LOW); 
             break;
 
-        case horn_relay_id:
+        case horn_id:
             digitalWrite(HORN_RELAY, LOW); 
             break;
 
@@ -377,10 +354,10 @@ void postRelayStatus(uint8_t id) {
     #endif
 
     // Build Message
-    uint8_t message[can_msg_in.dlc] = { 0x0C, 0x0C, 0x0A, id, status, 0x00, 0x00, 0x00 };
+    uint8_t message[can_adapter -> m_can_dlc] = { 0x0C, 0x0C, 0x0A, id, status, 0x00, 0x00, 0x00 };
 
     // Send Message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
 

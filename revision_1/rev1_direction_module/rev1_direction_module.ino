@@ -1,5 +1,5 @@
 /**
- * @file module.ino
+ * @file rev1_direction_module.ino
  * 
  * @author Joseph Telaak
  * 
@@ -14,55 +14,31 @@
 
 // --------- Definitions
 
-// Steering Motor Ctrl
-#define STR_L_PWM 9
-#define STR_R_PWM 6
-#define STR_ENABLE 4
-
-// Steering Linear Actuator Potentiometer
-#define STR_POT A5
-
-// Steering Wheel Input Encoder
-#define STR_WHL_ENC 3
 volatile int steering_encoder_ticks = 0;
 
 // Manual Mode
 volatile bool manual_mode_eng = true;
 volatile int manual_mode_steering_speed = 128;
 
-// Brake Motor Ctrl
-#define BRK_L_PWM 5
-#define BRK_R_PWM 10
-#define BRK_ENABLE 7
-
-// Brake Actuator Potentiometer
-#define BRK_POT A3
-
-// CAN
-#define CAN_CS 8
-#define CAN_INT 2
-
 // --------- Lib
 
 #include <module.h>
+#include "port_config.h"
 
 // --------- Setup Functions
 
 /** @brief Arduino default setup function (Holds until this module is enabled)  */
 void setup() {
-    // CAN ID
-    m_can_id = direction_control_default_address;
-
     // Standard module setup
-    standardModuleSetup(CAN_CS);
+    standardModuleSetup(CAN_CS, 0xFF1);
 
     // Announce Ready
     ready();
     holdTillEnabled();
 
     // Setup Interupts
-    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterupt(digitalPinToInterrupt(STR_WHL_ENC), incSteeringWheelEncoder, RISING);
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterrupt(digitalPinToInterrupt(STR_WHL_ENC), incSteeringWheelEncoder, RISING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
@@ -81,7 +57,7 @@ void loop() {
     // Manual Mode (Takes input from the wheel)
     if (manual_mode_eng) {
         int pos = postSteeringWheelPos();
-        turnToPos(manual_mode_steering_speed, pos);
+        turnWheelsToPos(manual_mode_steering_speed, pos);
 
         delay(10);
 
@@ -94,17 +70,17 @@ void loop() {
 /** @brief CAN Message Handling (Runs on interupt) */
 void canLoop() {
     // Get message
-    if (!getCANMessage()) { return: }
+    if (!can_adapter -> getCANMessage()) { return; }
 
     standardModuleLoopHead();
 
-    switch (can_msg_in.data[0]) {
+    switch (can_adapter -> can_msg_in.data[0]) {
         case 0x0A:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x01:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableSteeringMotor();
                                     break;
@@ -122,13 +98,13 @@ void canLoop() {
                             
 
                         case 0x0C:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
-                                    turnLeft(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
+                                    turnLeft(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
                                     break;
 
                                 case 0x02:
-                                    turnRight(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
+                                    turnRight(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
                                     break;
 
                                 default:
@@ -139,17 +115,17 @@ void canLoop() {
                             break;
 
                         case 0x0D:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableManualMode(); 
-                                    break;S
+                                    break;
 
                                 case 0x02:
                                     disableManualMode(); 
                                     break;
 
                                 case 0x0C:
-                                    setManualModeSteeringSpeed(int(can_msg_in.data[4]));
+                                    setManualModeSteeringSpeed(int(can_adapter -> can_msg_in.data[4]));
                                     break;
 
                                 default:
@@ -167,9 +143,9 @@ void canLoop() {
                     break;
 
                 case 0x02:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableBrakeMotor();
                                     break;
@@ -186,13 +162,13 @@ void canLoop() {
                             break;
 
                         case 0x0C:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
-                                    pullBrakes(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
+                                    pullBrakes(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
                                     break;
 
-                                case 0x02;
-                                    reverseBrakes(convertToInt((can_msg_in.data[4], can_msg_in.data[5]);
+                                case 0x02:
+                                    reverseBrakes(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
                                     break;
 
                                 default:
@@ -217,9 +193,9 @@ void canLoop() {
             break;
 
         case 0x0B:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x01:
-                    turnWheelsToPos(convertToInt((can_msg_in.data[2], can_msg_in.data[3]);
+                    turnWheelsToPos(255, convertToInt(can_adapter -> can_msg_in.data[2], can_adapter -> can_msg_in.data[3]));
                     break;
 
                 default:
@@ -231,14 +207,14 @@ void canLoop() {
             
 
         case 0x0C:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x01:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
                             postSteeringEnabled();
                             break;
 
-                        case 0x0D;
+                        case 0x0D:
                             postSteeringMode();
                             break;
 
@@ -259,7 +235,7 @@ void canLoop() {
                     break;
 
                 case 0x02:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
                             postBrakeEnabled();
                             break;
@@ -370,7 +346,7 @@ bool postBrakeEnabled() {
 
     // Send Message
     uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00 };
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return status
     return brakes;
@@ -389,7 +365,7 @@ int postBrakePos() {
     uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return tick count
     return pot_value;
@@ -532,7 +508,7 @@ bool postSteeringEnabled() {
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00 };
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return the status
     return steering;
@@ -583,7 +559,7 @@ bool postSteeringMode() {
 
     // Send message
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00 };
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return manual
     return is_man;
@@ -607,7 +583,7 @@ int postSteeringWheelPos() {
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return the potentiometer value
     return pot_value;
@@ -625,7 +601,7 @@ int postSteeringPos() {
     uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0F, data[0], data[1], 0x00, 0x00 };
 
     // Send message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return the potentiometer value
     return pot_value;
@@ -731,7 +707,7 @@ void turnWheelsToPos(int duty_cycle, int pot_pos) {
                 #endif
 
                 uint8_t message[8] = {  };
-                sendCANMessage(m_can_id, message);
+                can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
                 return; 
             
