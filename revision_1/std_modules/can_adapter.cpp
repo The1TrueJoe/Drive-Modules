@@ -203,7 +203,7 @@ void CAN_Adapter::sendCANMessage() {
         uint32_t two = EEPROM.read(address + 2);
         uint32_t one = EEPROM.read(address + 3);
         
-        return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) = ((one << 24) & 0xFFFFFFFF);
+        return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
 
     }
 
