@@ -14,38 +14,30 @@
  */
 
 // Libraries
-#include <module.h>
-#include <mcp4xxx.h>
+#include "module.h"
+#include "port_config.h"
+#include "mcp4xxx.h"
 
+// Settings
+#define NO_DIGIPOT_READ
+#define RESET_BY_DECREMENT
+//#define HOLD
+//#define DEBUG
+
+// DigiPot Namespace
 using namespace icecave::arduino;
 
-// Activity Control
-#define ACT_SW 4
-
-// Direction Control
-#define FWD_REV_SEL 5
+// Buzzer
 volatile bool buzzer_enabled = false;
-uint32_t accessory_control_address = accessory_module_default_address;
 
 // Digital Potentiometer
 volatile bool manual_accel = false;
-mcp4xxx* mcp4151(SPEED_CTRL_CS);
-#define SPEED_CTRL_CS 9
-#define NO_DIGIPOT_READ
-#define RESET_BY_DECREMENT
+MCP4XXX* digi_pot;
 
 #ifdef NO_DIGIPOT_READ
     volatile uint8_t wiper_pos = 0;
     
 #endif
-
-// Accelerator Pedal
-#define PEDAL_IN A3
-#define PEDAL_SW 3
-
-// CAN
-#define CAN_CS 10
-#define CAN_INT 2
 
 // Timing
 long time_since_update = 0;
@@ -60,37 +52,23 @@ long time_since_update = 0;
 
 void setup() {
     // CAN ID
-    m_can_id = speed_module_default_address;
+    can_adapter -> m_can_id = drive_module_address;
 
     // Standard module setup
-    standardModuleSetup(CAN_CS);
+    standardModuleSetup(CAN_CS, 0xFF6);
 
     // Announce Ready
-    ready();
-    holdTillEnabled();
-
-    #ifdef RESET_BY_DECREMENT
-        #ifdef DEBUG
-            Serial.println("Reseting Wiper Pos by Decrementing");
-
-        #endif
-
-        // Reset Wiper
-        for (int i = 0; i < 260; i++) {
-            mcp4151->decrement();
-            
-        }
-
-    #else
-        mcp4151->write(0);
-    
+    #ifdef HOLD
+        ready();
+        holdTillEnabled();
     #endif
 
     // Setup Interupts
-    attachInterupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
     // Setup
+    setupAccelerator();
     setupDirectionSelector();
     setupActivitySwitch();
     setupPedal();
@@ -129,21 +107,21 @@ void loop() {
 
 void canLoop() {
     // Get message
-    if (!getCANMessage()) { return: }
+    if (!can_adapter -> getCANMessage()) { return; }
 
     standardModuleLoopHead();
 
-    switch (can_msg_in.data[0]) {
+    switch (can_adapter -> can_msg_in.data[0]) {
         case 0x0A:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0xA:
-                            setAccelPos(can_msg_in.data[3]);
+                            setAccelPos(can_adapter -> can_msg_in.data[3]);
                             break;
 
                         case 0x0D:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableManualAccelInput();
                                     break;
@@ -159,7 +137,7 @@ void canLoop() {
                             break;
 
                         case 0x0E:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableMovement();
                                     break;
@@ -181,7 +159,7 @@ void canLoop() {
                     break;
 
                 case 0x0D:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x01:
                             forward();
                             break;
@@ -191,12 +169,12 @@ void canLoop() {
                             break;
 
                         case 0x0B:
-                            switch (can_msg_in.data[3]) {
+                            switch (can_adapter -> can_msg_in.data[3]) {
                                 case 0x01:
                                     enableBuzzerCtrl();
                                     break;
 
-                                case 0x0@:
+                                case 0x02:
                                     disableBuzzerCtrl();
                                     break;
 
@@ -219,15 +197,19 @@ void canLoop() {
             break;
 
         case 0x0B:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x01:
                             incAccelPos();
                             break;
 
                         case 0x02:
                             decAccelPos();
+                            break;
+
+                        case 0x0D:
+                            zeroAccelPos();
                             break;
 
                         default:
@@ -243,9 +225,9 @@ void canLoop() {
             break;
 
         case 0x0C:
-            switch (can_msg_in.data[1]) {
+            switch (can_adapter -> can_msg_in.data[1]) {
                 case 0x0A:
-                    switch (can_msg_in.data[2]) {
+                    switch (can_adapter -> can_msg_in.data[2]) {
                         case 0x0A:
                             postAccelSetting();
                             break;
@@ -304,7 +286,7 @@ void forward() {
     // Buzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_control_address, message);
+        can_adapter -> sendCANMessage(accessory_module_address, message);
 
     }
     
@@ -319,7 +301,7 @@ void reverse() {
     // Buzzzer control
     if (buzzer_enabled) {
         uint8_t message[8] = { 0x0A, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        sendCANMessage(accessory_control_address, message);
+        can_adapter -> sendCANMessage(accessory_module_address, message);
 
     }
 
@@ -334,7 +316,7 @@ void postDirection() {
     uint8_t message[8] = { 0x0C, 0x0C, 0x0D, getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
 
     // Send Message
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
 
@@ -348,11 +330,18 @@ void enableBuzzerCtrl() { buzzer_enabled = true; }
 void postBuzzerEnable() {
     // Build Message
     uint8_t message[8] = { 0x0C, 0x0C, 0x0B, getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
 }
 
 // --------- Speed Control
+
+/** @brief Setup the accelerator */
+void setupAccelerator() {
+    digi_pot = new MCP4XXX(SPEED_CTRL_CS);
+    zeroAccelPos();
+
+}
 
 /** @brief Disable manual accelerator input and enable auto speed control */
 void disableManualAccelInput() { manual_accel = false; }
@@ -369,12 +358,35 @@ bool postManualAccelInput() {
 
     // Build Message
     uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition
     return condition;
 
 } 
+
+/** @brief Zeroes the accelerator position */
+void zeroAccelPos() {
+    #ifdef RESET_BY_DECREMENT
+        #ifdef DEBUG
+            Serial.println("Reseting Wiper Pos by Decrementing");
+
+        #endif
+
+        // Reset Wiper
+        for (int i = 0; i < 260; i++) {
+            digi_pot->decrement();
+            
+        }
+
+    #else
+        digi_pot->write(0);
+    
+    #endif
+
+    postAccelSetting();
+
+}
 
 /** @brief Set the accelerator digital pot position */
 void setAccelPos(uint8_t pos) {
@@ -383,7 +395,7 @@ void setAccelPos(uint8_t pos) {
 
         if (current_pos > pos) {
             for (int i = current_pos; i < pos; i++) {
-                mcp4151->increment();
+                digi_pot->increment();
 
                 #ifdef NO_DIGIPOT_READ
                     wiper_pos++;
@@ -393,7 +405,7 @@ void setAccelPos(uint8_t pos) {
 
         } else if (current_pos < pos) {
             for (int i = current_pos; i > pos; i--) {
-                mcp4151->decrement();
+                digi_pot->decrement();
 
                 #ifdef NO_DIGIPOT_READ
                     wiper_pos--;
@@ -402,10 +414,8 @@ void setAccelPos(uint8_t pos) {
             }
         }
 
-        for (int i = )
-
     #else
-        mcp4151->write(pos);
+        digi_pot->write(pos);
 
     #endif
 
@@ -415,7 +425,7 @@ void setAccelPos(uint8_t pos) {
 
 /** @brief Increment the accelerator digital pot position */
 void incAccelPos() { 
-    mcp4151->increment();
+    digi_pot -> increment();
 
     #ifdef NO_DIGIPOT_READ
         wiper_pos++;
@@ -428,7 +438,7 @@ void incAccelPos() {
 
 /** @brief Decrement the accelerator digital pot position */
 void decAccelPos() { 
-    mcp4151->increment();
+    digi_pot->increment();
 
     #ifdef NO_DIGIPOT_READ
         wiper_pos--;
@@ -445,7 +455,7 @@ uint8_t getAccelSetting() {
         return wiper_pos;
 
     #else
-        return mcp4151->readWiper();
+        return digi_pot->readWiper();
 
     #endif
 
@@ -455,7 +465,7 @@ uint8_t getAccelSetting() {
 uint8_t postAccelSetting() {
     // Build Message
     uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0A, getAccelSetting(), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return value
     return wiper_pos;
@@ -480,7 +490,7 @@ int postPedalPos() {
     int pedal_pos = readPedalPos();
     uint8_t data[2] = { (pedal_pos >> 8), (pedal_pos & 0xFF)};
     uint8_t message[8] = {};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return value
     return pedal_pos;
@@ -491,7 +501,7 @@ int postPedalPos() {
 void pedalPressed() {
     // Build Message
     uint8_t message[8] = {};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Enable the movement relay if the pedal is pressed
     if (manual_accel) {
@@ -500,7 +510,7 @@ void pedalPressed() {
     }
 
     // Attach Interupt
-    attachInterupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
 
 }
 
@@ -537,7 +547,7 @@ bool postMovementEnabled() {
 
     // Build Message
     uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    sendCANMessage(m_can_id, message);
+    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
 
     // Return condition
     return condition;

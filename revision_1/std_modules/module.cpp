@@ -1,3 +1,18 @@
+/**
+ * @file module.cpp
+ * 
+ * @author Joseph Telaak
+ * 
+ * @brief Standard module helper methods
+ * 
+ * @version 0.1
+ * 
+ * @date 2022-04-26
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include <module.h>
 
 /**
@@ -5,15 +20,17 @@
  * 
  */
 
-void standardModuleSetup(int CAN_CS_PIN) {
+void standardModuleSetup(int CAN_CS_PIN, uint32_t id) {
     // Init serial port
     Serial.begin(115200);
 
-    // Setup the id light
-    setupIDLight();
+    #ifdef HAS_LIGHT
+        // Setup the id light
+        setupIDLight();
+    #endif
 
     // Setup the can bus transceiver
-    setupCAN(CAN_CS_PIN);
+    can_adapter -> setupCAN(CAN_CS_PIN, id);
 
 }
 
@@ -29,7 +46,7 @@ void ready() {
         Serial.println("Module Ready")
     #endif
 
-    sendCANMessage(master_can_id, message);
+    can_adapter -> sendCANMessage(master_can_id, message);
 
 }
 
@@ -46,14 +63,14 @@ void holdTillEnabled() {
         Serial.println("Awaiting Enable Message!");
     #endif
 
-    ready()
-    getCANMessage();
+    ready();
+    can_adapter -> getCANMessage();
 
     while (!enabled) {
         bool equal_message = true; 
 
-        for (int i = 0; i < len(enabled_message); i++) [
-            if (enabled_message[i] != can_msg_in[i]) {
+        for (int i = 0; i < sizeof(enabled_message); i++) {
+            if (enabled_message[i] != can_adapter -> can_msg_in.data[i]) {
                 equal_message = false;
                 break;
 
@@ -67,8 +84,8 @@ void holdTillEnabled() {
                 Serial.println("Awaiting Enable Message!");
             #endif
 
-            ready()
-            getCANMessage();
+            ready();
+            can_adapter -> getCANMessage();
 
         } else {
             #ifdef DEBUG
@@ -101,26 +118,5 @@ void standardModuleLoopHead() {
  */
 
 void standardModuleLoopTail() {
-    switch (can_msg_in.data[0]) {
-        case 0x0F:
-            switch (can_msg_in.data[1]) {
-                case 0x0A:
-                    setIDLightColor(
-                        convertToInt(can_msg_in.data[2]), 
-                        convertToInt(can_msg_in.data[3]), 
-                        convertToInt(can_msg_in.data[4]) 
-                    );
-
-                    break;
-            
-                default:
-                    break;
-            }
-
-            break;
-
-        default:
-            break;
-
-    }
+    
 }

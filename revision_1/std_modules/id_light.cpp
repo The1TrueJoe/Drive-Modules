@@ -1,3 +1,18 @@
+/**
+ * @file id_light.cpp
+ * 
+ * @author Joseph Telaak
+ * 
+ * @brief Identification light control
+ * 
+ * @version 0.1
+ * 
+ * @date 2022-04-26
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 #include "id_light.h"
 
 // --------- Light
@@ -7,7 +22,7 @@
  * 
  */
 
-void ID_LIGHT::setupIDLight() {
+void setupIDLight() {
     #ifdef DEBUG
         Serial.println("ID Light: Setting Pin Mode")
     #endif
@@ -26,7 +41,7 @@ void ID_LIGHT::setupIDLight() {
  * @param blue blue value
  */
 
-void ID_LIGHT::setIDLightColor(int red, int green, int blue) {
+void setIDLightColor(int red, int green, int blue) {
     #ifdef DEBUG
         Serial.println("ID Light: Set R: " String(red) + " G: " = String(green) + " B: " + String(blue));
     #endif
@@ -38,7 +53,7 @@ void ID_LIGHT::setIDLightColor(int red, int green, int blue) {
 }
 
 /** @brief Set the light to red to show an error */
-void ID_LIGHT::errorLight() { setIDLightColor(255, 0, 0); }
+void errorLight() { setIDLightColor(255, 0, 0); }
 
 /** @brief Set the light to off */
-void ID_LIGHT::offLight() { setIDLightColor(0, 0, 0); }
+void offLight() { setIDLightColor(0, 0, 0); }

@@ -1,21 +1,30 @@
+/**
+ * @file module.h
+ * 
+ * @author Joseph Telaak
+ * 
+ * @brief Module outline and standard utils
+ * 
+ * @version 0.1
+ * 
+ * @date 2022-04-26
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
+
 // --------- Standard Module Components
 #include "can_adapter.h"
-#include "id_light.h"
+#include "net.h"
 
-// CAN Default Message Headers
-#define COM_SET 0x0A
-#define COM_OP 0x0B
-#define COM_GET 0x0C
+#ifdef HAS_LIGHT
+    #include "id_light.h"
+#endif
 
-// Default Module CAN Addresses
-#define master_can_id 0x001
-#define direction_control_default_address 0xFF1
-#define accessory_module_default_address 0xFF2
-#define speed_module_default_address 0xFF3
+static CAN_Adapter *can_adapter;
 
-public:
-    void standardModuleSetup(int CAN_CS_PIN = Default_CAN_CS);
-    void standardModuleLoopHead();
-    void standardModuleLoopTail();
-    void ready();
-    void holdTillEnabled();
+void standardModuleSetup(int CAN_CS_PIN = Default_CAN_CS, uint32_t id = 0x000);
+void standardModuleLoopHead();
+void standardModuleLoopTail();
+void ready();
+void holdTillEnabled();
