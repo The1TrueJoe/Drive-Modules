@@ -14,15 +14,27 @@
 
 // --------- Definitions
 
-volatile int steering_encoder_ticks = 0;
+// Encoder
+Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
+long old_pos = -999;
 
 // Manual Mode
 volatile bool manual_mode_eng = true;
 volatile int manual_mode_steering_speed = 128;
 
+// Steering Limits
+#define upper_steering_limit 800
+#define center_steering_pos 600 
+
+// Settings
+//#define DEBUG
+//#define HOLD
+//#define AUTO_CENTER
+
 // --------- Lib
 
 #include <module.h>
+#include "Encoder.h"
 #include "port_config.h"
 
 // --------- Setup Functions
@@ -33,16 +45,24 @@ void setup() {
     standardModuleSetup(CAN_CS, 0xFF1);
 
     // Announce Ready
-    ready();
-    holdTillEnabled();
+    #ifdef HOLD
+        ready();
+        holdTillEnabled();
+    #endif
 
     // Setup Interupts
     attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterrupt(digitalPinToInterrupt(STR_WHL_ENC), incSteeringWheelEncoder, RISING);
 
     // Setup Motor Controllers
     setupBrakeMotor();
     setupSteeringMotor();
+
+    // Center
+    #ifdef AUTO_CENTER
+        noInterrupts();
+        turnWheelsToPos(255, center_steering_pos);
+        interrupts();
+    #endif
 
 }
 
@@ -54,17 +74,34 @@ void loop() {
     postSteeringPos();
     postSteeringWheelPos();
 
+    if (isSteeringEnabled()) {
+        if (postSteeringPos() > upper_steering_limit) {
+            resetSteeringMotor();
+
+        }
+    }
+
     // Manual Mode (Takes input from the wheel)
     if (manual_mode_eng) {
         int pos = postSteeringWheelPos();
-        turnWheelsToPos(manual_mode_steering_speed, pos);
+        
+        if (pos > old_pos) {
+            turnLeft(255);
 
-        delay(10);
+        } else if (pos < old_pos) {
+            turnRight(255);
+
+        } else {
+            resetSteeringMotor();
+
+        }
 
     } else {
         delay(100); // Longer delay while in normal mode
 
     }
+
+
 }
 
 /** @brief CAN Message Handling (Runs on interupt) */
@@ -566,14 +603,8 @@ bool postSteeringMode() {
 
 }
 
-/** @brief Increment the steering wheel encoder */
-void incSteeringWheelEncoder() { steering_encoder_ticks++; }
-
-/** @brief Increment the steering wheel encoder */
-void resetSteeringWheelEncoder() { steering_encoder_ticks = 0; }
-
 /** @brief Check the steering wheel potentiometer position */
-int checkSteeringWheelPos() { return steering_encoder_ticks; }
+int checkSteeringWheelPos() { return wheel_enc.read(); }
 
 /** @brief Report the steeting wheel position to the bus  */
 int postSteeringWheelPos() {
@@ -616,16 +647,7 @@ int postSteeringPos() {
 
 void turnLeft(int duty_cycle) {
     // Check if enabled
-    if (!isSteeringEnabled()) { 
-        if (manual_mode_eng) {
-            enableSteeringMotor();
-            postSteeringEnabled();
-
-        } else {
-            return;
-
-        }
-    }
+    if (!isSteeringEnabled()) { enableSteeringMotor(); }
 
     // Set the motor controller
     analogWrite(STR_L_PWM, 0);
@@ -646,16 +668,8 @@ void turnLeft(int duty_cycle) {
 
 void turnRight(int duty_cycle) {
     // Check if enabled
-    if (!isSteeringEnabled()) { 
-        if (manual_mode_eng) {
-            enableSteeringMotor();
-            postSteeringEnabled();
-
-        } else {
-            return;
-            
-        }
-    }
+    if (postSteeringPos() >= upper_steering_limit) { return; }
+    if (!isSteeringEnabled) { enableSteeringMotor(); }
 
     // Set the motor controller
     analogWrite(STR_R_PWM, 0);
@@ -676,6 +690,8 @@ void turnRight(int duty_cycle) {
  */
 
 void turnWheelsToPos(int duty_cycle, int pot_pos) {
+    if (post_pos > upper_steering_limit) { return; }
+
     // Get the current position
     int current_pos = postSteeringPos();
     int cnt;
@@ -694,7 +710,6 @@ void turnWheelsToPos(int duty_cycle, int pot_pos) {
         // Loop to check
         while (current_pos != pot_pos) { 
             // Wait
-            delay(1); 
             cnt++;
 
             // Periodic posts

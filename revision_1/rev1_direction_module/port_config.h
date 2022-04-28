@@ -18,10 +18,11 @@
 #define STR_ENABLE 4
 
 // Steering Linear Actuator Potentiometer
-#define STR_POT A5
+#define STR_POT A0
 
 // Steering Wheel Input Encoder
 #define STR_WHL_ENC 3
+#define STR_WHL_ENC2 A2
 
 // Brake Motor Ctrl
 #define BRK_L_PWM 5
@@ -29,7 +30,7 @@
 #define BRK_ENABLE 7
 
 // Brake Actuator Potentiometer
-#define BRK_POT A3
+#define BRK_POT A1
 
 // CAN
 #define CAN_CS 8
