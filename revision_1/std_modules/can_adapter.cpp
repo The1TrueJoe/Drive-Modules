@@ -19,23 +19,6 @@
 
 /** @brief Setup the CAN transceiver */
 void CAN_Adapter::setupCAN(int CS_PIN, uint32_t id) {
-    #ifdef USES_EEPROM
-        // Get address from eeprom
-        Serial.println("CAN Transceiver: Loading CAN Address");
-    
-        if (m_can_id == 0x000) {
-            uint32_t new_addr = readEEPROM32bit(0);
-
-            if (new_addr == 0x000) {
-
-
-            } else {
-                m_can_id = new_addr;
-                
-            }
-        }
-    #endif
-
     #ifdef DEBUG
         // Log init
         Serial.println("CAN Transceiver: Init Starting");
@@ -166,64 +149,13 @@ void CAN_Adapter::sendCANMessage() {
 
 #endif
 
-// --------- EEPROM
-#ifdef USES_EEPROM
-
-    /**
-     * @brief Write a 32 bit integer into eeprom
-     * 
-     * @param address Address in eeprom
-     * @param value Value
-     */
-
-    void CAN_Adapter::writeEEPROM32bit(int address, uint32_t value) {
-        byte one = (value & 0xFF);
-        byte two = ((value >> 8) & 0xFF);
-        byte three = ((value >> 16) & 0xFF);
-        byte four = ((value >> 24) & 0xFF);
-
-        EEPROM.write(address, four);
-        EEPROM.write(address + 1, three);
-        EEPROM.write(address + 2, two);
-        EEPROM.write(address + 3, one);
-
-    }
-
-    /**
-     * @brief Read a 32 bit integer from eeprom
-     * 
-     * @param address eeprom address
-     * 
-     * @return uint32_t 32 bit value 
-     */
-
-    uint32_t CAN_Adapter::readEEPROM32bit(int address) {
-        uint32_t four = EEPROM.read(address);
-        uint32_t three = EEPROM.read(address + 1);
-        uint32_t two = EEPROM.read(address + 2);
-        uint32_t one = EEPROM.read(address + 3);
-        
-        return ((four << 0) & 0xFF) + ((three << 8) & 0xFFFF) + ((two << 16) & 0xFFFFFF) + ((one << 24) & 0xFFFFFFFF);
-
-    }
-
-#endif
-
 /**
  * @brief Set the new can address in eeprom
  * 
  * @param new_can_addr New can address
  */
 
-void CAN_Adapter::setCANAddress(uint32_t new_can_addr) { 
-    m_can_id = new_can_addr;
-
-    #ifdef USES_EEPROM
-        writeEEPROM32bit(0, new_can_addr);
-        EEPROM.update(can_addr_mem_loc, new_can_addr); 
-    #endif
-
-}
+void CAN_Adapter::setCANAddress(uint32_t new_can_addr) {  m_can_id = new_can_addr; }
 
 /**
  * @brief Check the condition and use to prepare a CAN message
