@@ -18,6 +18,14 @@ else
     git clone https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
 fi
 
+if [ -d "arduino-mcp4xxx" ]; then
+    cd arduino-mcp2515
+    git pull
+    cd ..
+else 
+    git clone https://github.com/GSSM-AutoGolfCart/arduino-mcp4xxx
+fi
+
 if [ -d "ArduinoCore-avr" ]; then
     cd ArduinoCore-avr
     git pull
