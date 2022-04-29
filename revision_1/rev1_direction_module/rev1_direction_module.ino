@@ -12,726 +12,267 @@
  * 
  */
 
-// --------- Definitions
-
-// Encoder
-Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
-long old_pos = -999;
-
-// Manual Mode
-volatile bool manual_mode_eng = true;
-volatile int manual_mode_steering_speed = 128;
-
-// Steering Limits
-#define upper_steering_limit 800
-#define center_steering_pos 600 
-
-// Settings
-//#define DEBUG
-//#define HOLD
-//#define AUTO_CENTER
-
-// --------- Lib
-
-#include <module.h>
+#include "mcp2515.h"
 #include "Encoder.h"
-#include "port_config.h"
 
-// --------- Setup Functions
+// Steering Motor Ctrl
+#define STR_L_PWM 9
+#define STR_R_PWM 6
+#define STR_ENABLE 4
 
-/** @brief Arduino default setup function (Holds until this module is enabled)  */
+// Steering Linear Actuator Potentiometer
+#define STR_POT A0
+
+// Steering Wheel Input Encoder
+#define STR_WHL_ENC 3
+#define STR_WHL_ENC2 A2
+
+// Brake Motor Ctrl
+#define BRK_L_PWM 5
+#define BRK_R_PWM 10
+#define BRK_ENABLE 7
+
+// Brake Actuator Potentiometer
+#define BRK_POT A1
+
+// CAN
+#define CAN_CS 8
+#define CAN_INT 2
+#define CAN_DLC 8
+#define CAN_ID 0x002
+
+MCP2515 can(CAN_CS);
+Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
+
 void setup() {
-    // Standard module setup
-    standardModuleSetup(CAN_CS, 0xFF1);
+    can.reset();
+    can.setBitrate(CAN_125KBPS);
+    can.setNormalMode();
 
-    // Announce Ready
-    #ifdef HOLD
-        ready();
-        holdTillEnabled();
-    #endif
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
 
-    // Setup Interupts
-    attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
+    noInterrupts();
 
-    // Setup Motor Controllers
-    setupBrakeMotor();
-    setupSteeringMotor();
-
-    // Center
-    #ifdef AUTO_CENTER
-        noInterrupts();
-        turnWheelsToPos(255, center_steering_pos);
-        interrupts();
-    #endif
-
-}
-
-// --------- Primary Loop
-
-/** @brief Arduino main loop */
-void loop() {
-    // Post the positions
-    postSteeringPos();
-    postSteeringWheelPos();
-
-    if (isSteeringEnabled()) {
-        if (postSteeringPos() > upper_steering_limit) {
-            resetSteeringMotor();
-
-        }
-    }
-
-    // Manual Mode (Takes input from the wheel)
-    if (manual_mode_eng) {
-        int pos = postSteeringWheelPos();
-        
-        if (pos > old_pos) {
-            turnLeft(255);
-
-        } else if (pos < old_pos) {
-            turnRight(255);
-
-        } else {
-            resetSteeringMotor();
-
-        }
-
-    } else {
-        delay(100); // Longer delay while in normal mode
-
-    }
-
-
-}
-
-/** @brief CAN Message Handling (Runs on interupt) */
-void canLoop() {
-    // Get message
-    if (!can_adapter -> getCANMessage()) { return; }
-
-    standardModuleLoopHead();
-
-    switch (can_adapter -> can_msg_in.data[0]) {
-        case 0x0A:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x01:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x0A:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableSteeringMotor();
-                                    break;
-
-                                case 0x02:
-                                    resetSteeringMotor();
-                                    break;
-
-                                default:
-                                    break;
-
-                            }
-                            
-                            break;
-                            
-
-                        case 0x0C:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    turnLeft(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
-                                    break;
-
-                                case 0x02:
-                                    turnRight(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
-                                    break;
-
-                                default:
-                                    break;
-
-                            }
-                            
-                            break;
-
-                        case 0x0D:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableManualMode(); 
-                                    break;
-
-                                case 0x02:
-                                    disableManualMode(); 
-                                    break;
-
-                                case 0x0C:
-                                    setManualModeSteeringSpeed(int(can_adapter -> can_msg_in.data[4]));
-                                    break;
-
-                                default:
-                                    break;
-
-                            }
-                            
-                            break;
-
-                        default:
-                            break;
-
-                    }
-
-                    break;
-
-                case 0x02:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x0A:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableBrakeMotor();
-                                    break;
-
-                                case 0x02:
-                                    resetBrakeMotor();
-                                    break;
-
-                                default:
-                                    break;
-
-                            }
-
-                            break;
-
-                        case 0x0C:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    pullBrakes(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
-                                    break;
-
-                                case 0x02:
-                                    reverseBrakes(convertToInt(can_adapter -> can_msg_in.data[4], can_adapter -> can_msg_in.data[5]));
-                                    break;
-
-                                default:
-                                    break;
-
-                            }
-
-                            break;
-                        
-                        default:
-                            break;
-
-                    }
-
-                    break;
-
-                default:
-                    break;
-
-            }
-
-            break;
-
-        case 0x0B:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x01:
-                    turnWheelsToPos(255, convertToInt(can_adapter -> can_msg_in.data[2], can_adapter -> can_msg_in.data[3]));
-                    break;
-
-                default:
-                    break;
-            
-            }
-
-            break;
-            
-
-        case 0x0C:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x01:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x0A:
-                            postSteeringEnabled();
-                            break;
-
-                        case 0x0D:
-                            postSteeringMode();
-                            break;
-
-                        case 0x0E:
-                            postSteeringWheelPos();
-                            break;
-
-
-                        case 0x0F:
-                            postSteeringPos();
-                            break;
-
-                        default:
-                            break;
-
-                    }
-
-                    break;
-
-                case 0x02:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x0A:
-                            postBrakeEnabled();
-                            break;
-
-                        case 0x0F:
-                            postBrakePos();
-                            break;
-
-                        default:
-                            break;
-
-                    }
-
-                    break;
-
-                default:
-                    break;
-
-            }
-
-            break;
-
-
-        default:
-            break;
-            
-    }
-        
-
-    standardModuleLoopTail();
-}
-
-// --------- Brakes
-
-/** @brief Sets up the brake motor controller */
-void setupBrakeMotor() {
-    #ifdef DEBUG
-        Serial.println("Brake Motor Ctrl: Setting Pin Mode");
-    #endif
-
-    // Brake Motor Ctrl PinMode
-    pinMode(BRK_ENABLE, OUTPUT);
-    pinMode(BRK_L_PWM, OUTPUT);
-    pinMode(BRK_R_PWM, OUTPUT);
-
-    // Reset Control
-    resetBrakeMotor();
-
-    // Post Status
-    postBrakeEnabled();
-    postBrakePos();
-
-}
-
-/** @brief Resets the brake motor controller (Sets all pins low) */
-void resetBrakeMotor() {
-    // Write Controller 2 Low
-    digitalWrite(BRK_ENABLE, LOW);
-    digitalWrite(BRK_L_PWM, LOW);
-    digitalWrite(BRK_R_PWM, LOW);
-
-    // Report
-    #ifdef DEBUG
-        Serial.println("Brake Motor Ctrl: Reset");
-    #endif
-
-    postBrakeEnabled();
-
-}
-
-/** @brief Enable the brake motor controller */
-void enableBrakeMotor() {
-    // Write pin high
-    digitalWrite(BRK_ENABLE, HIGH);
-
-    // Report
-    #ifdef DEBUG
-        Serial.println("Brake Motor Ctrl: Enabled");
-    #endif
-
-    postBrakeEnabled();
-    
-}
-
-/** @brief Check if brake motor controller is enabled */
-bool isBrakeEnabled() { return digitalRead(BRK_ENABLE) == HIGH; }
-
-/** @brief Report the brake motor controller enable status to the bus */
-bool postBrakeEnabled() {
-    // Check status
-    bool brakes = isBrakeEnabled();
-
-    // Build message
-    #ifdef DEBUG
-        if (brakes) {
-            Serial.println("Brakes Are Enabled");
-            uint8_t status = 0x01;
-
-        } else {
-            uint8_t status = 0x02;
-
-        }
-
-    #else
-        uint8_t status = brakes ? 0x01 : 0x02;
-
-    #endif
-
-    // Send Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0A, status, 0x00, 0x00, 0x00 };
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return status
-    return brakes;
-
-}
-
-/** @brief Check the brake linear actuator position */
-int checkBrakePos() { return analogRead(BRK_POT); }
-
-/** @brief Post the brake tick count to the bus */
-int postBrakePos() {
-    int pot_value = checkBrakePos();
-
-    // Build mesage
-    uint8_t data[2] = { (pot_value >> 8), (pot_value & 0xFF) };
-    uint8_t message[8] = { 0x0C, 0x0C, 0x02, 0x0F, data[0], data[1], 0x00, 0x00 };
-
-    // Send message
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return tick count
-    return pot_value;
-
-}
-
-/**
- * @brief Pull the brake cord to engage the brakes
- * 
- * @param duty_cycle Motor duty cycle
- */
-
-void pullBrakes(int duty_cycle) {
-    // Check enabled
-    if (!isBrakeEnabled()) { 
-        if (manual_mode_eng) {
-            enableBrakeMotor();
-
-        } else {
-            return;
-            
-        }
-    }
-
-    // Write to controllers
-    analogWrite(BRK_L_PWM, 0);
-    analogWrite(BRK_R_PWM, duty_cycle);
-
-    #ifdef DEBUG
-        // Report
-        Serial.println("Pulling Brakes: " + String(duty_cycle));
-    #endif
-
-}
-
-/**
- * @brief Reverse the brake cord
- * 
- * @param duty_cycle Motor duty cycle
- */
-
-void reverseBrakes(int duty_cycle) {
-    // Check enable
-    if (!isBrakeEnabled()) { 
-        if (manual_mode_eng) {
-            enableBrakeMotor();
-
-        } else {
-            return;
-            
-        }
-    }
-
-    // Write to controllers
-    analogWrite(BRK_R_PWM, 0);
-    analogWrite(BRK_L_PWM, duty_cycle);
-
-    #ifdef DEBUG
-        // Report
-        Serial.println("Reversing Brakes: " + String(duty_cycle));
-    #endif
-
-}
-
-// --------- Steering
-
-/** @brief Setup the steering motor */
-void setupSteeringMotor() {
-    #ifdef DEBUG
-        Serial.println("Steering Motor Ctrl: Setting Pin Mode");
-    #endif
-
-    // Steering Motor Ctrl PinMode
     pinMode(STR_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
     pinMode(STR_R_PWM, OUTPUT);
+    pinMode(STR_POT, INPUT);
 
-    // Reset Controller
-    resetSteeringMotor();
-
-    // Set Potentiometer
-    postSteeringPos();
-    postSteeringEnabled();
-
-}
-
-/** @brief Resets the steering motor controller (Sets all pins low) */
-void resetSteeringMotor() {
-    // Write Controller 1 Low
     digitalWrite(STR_ENABLE, LOW);
     digitalWrite(STR_L_PWM, LOW);
     digitalWrite(STR_R_PWM, LOW);
 
-    // Report
-    #ifdef DEBUG
-        Serial.println("Steering Motor Ctrl: Reset");
-    #endif
+    pinMode(BRK_ENABLE, OUTPUT);
+    pinMode(BRK_L_PWM, OUTPUT);
+    pinMode(BRK_R_PWM, OUTPUT);
+    pinMode(BRK_POT, INPUT);
 
-    postSteeringEnabled();
+    digitalWrite(BRK_ENABLE, LOW);
+    digitalWrite(BRK_L_PWM, LOW);
+    digitalWrite(BRK_R_PWM, LOW);
 
-}
-
-/** @brief Enable the steering controller */
-void enableSteeringMotor() {
-    // Write pin high
-    digitalWrite(STR_ENABLE, HIGH);
-
-    // Report
-    #ifdef DEBUG
-        Serial.println("Steering Motor Ctrl: Enabled");
-    #endif
-
-    postSteeringEnabled();
+    interrupts();
 
 }
 
-/** @brief Check if the steering motor controller is enabled */
-bool isSteeringEnabled() { return digitalRead(STR_ENABLE) == 1; }
+void loop() {
+    read_brk_pot();
+    read_brk_stat();
+    read_str_pot();
+    read_str_stat();
+    read_str_whl();
 
-/**  @brief Report if the steeting motor controller is enabled to the bus */
-bool postSteeringEnabled() {
-    // Check the status
-    bool steering = isSteeringEnabled();
-
-    // Build message
-    #ifdef DEBUG
-        if (steering) {
-            Serial.println("Steering is Enabled");
-            uint8_t status = 0x01;
-
-        } else {
-            uint8_t status = 0x02;
-
-        }
-
-    #else
-        uint8_t status = steering ? 0x01 : 0x02;
-
-    #endif
-
-    // Send message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0A, status, 0x00, 0x00, 0x00 };
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return the status
-    return steering;
+    delay(2000);
 
 }
 
-/** @brief Check if the steering is in manual mode */
-bool isManualMode() { return manual_mode_eng; }
+void can_irq() {
+    struct can_frame can_msg_in;
 
-/** @brief Enable the manual steering mode (input from the wheel potentiometer) */
-void enableManualMode() { 
-    manual_mode_eng = true; 
-    postSteeringMode();
-    
-}
+    if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        if (can_msg_in.can_id == CAN_ID) {
+            if (can_msg_in.data[0] == 0x0A) {
+                if (can_msg_in.data[1] == 0x01) {
+                    if (can_msg_in.data[2] == 0x0A) {
+                        if (can_msg_in.data[3] == 0x01) {
+                            digitalWrite(STR_ENABLE, LOW);
+                            digitalWrite(STR_L_PWM, LOW);
+                            digitalWrite(STR_R_PWM, LOW);
 
-/** @brief Disable the manual steering mode (input from the wheel potentiometer)  */
-void disableManualMode() { 
-    manual_mode_eng = false; 
-    postSteeringMode();
+                        } else if (can_msg_in.data[3] == 0x02) {
+                            digitalWrite(STR_ENABLE, HIGH);
 
-}
+                        }
 
-/** @brief Set the manual steering speed */
-void setManualModeSteeringSpeed(int speed) { manual_mode_steering_speed = speed; }
+                        read_str_stat();
 
-/** @brief Report the steering mode to the bus */
-bool postSteeringMode() {
-    // Check if in the manual mode
-    bool is_man = isManualMode();
+                    } else if (can_msg_in.data[2] == 0x0C) {
+                        if (can_msg_in.data[3] == 0x01) {
+                            analogWrite(STR_L_PWM, can_msg_in.data[4]);
+                            digitalWrite(STR_R_PWM, LOW);
 
-    // Build message
-    #ifdef DEBUG
-        if (is_man) {
-            Serial.println("Manual Mode Enabled");
-            uint8_t status = 0x01;
+                        } else if (can_msg_in.data[3] == 0x02) {
+                            digitalWrite(STR_L_PWM, LOW);
+                            analogWrite(STR_R_PWM, can_msg_in.data[4]);
 
-        } else {
-            Serial.println("Manual Mode Disabled");
-            uint8_t status = 0x02;
+                        }
 
-        }
-    
-    #else
-        uint8_t status = is_man ? 0x01 : 0x02;
+                        read_str_pot();
 
-    #endif
+                    }
 
-    // Send message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0D, status, 0x00, 0x00, 0x00 };
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
+                } else if (can_msg_in.data[1] == 0x02) {
+                    if (can_msg_in.data[2] == 0x0A) {
+                        if (can_msg_in.data[3] == 0x01) {
+                            digitalWrite(BRK_ENABLE, LOW);
+                            digitalWrite(BRK_L_PWM, LOW);
+                            digitalWrite(BRK_R_PWM, LOW);
 
-    // Return manual
-    return is_man;
+                        } else if (can_msg_in.data[3] == 0x02) {
+                            digitalWrite(BRK_ENABLE, HIGH);
 
-}
+                        }
 
-/** @brief Check the steering wheel potentiometer position */
-int checkSteeringWheelPos() { return wheel_enc.read(); }
+                        read_brk_stat();
 
-/** @brief Report the steeting wheel position to the bus  */
-int postSteeringWheelPos() {
-    // Build message
-    int pot_value = checkSteeringWheelPos();
-    uint8_t data[2] = { (pot_value >> 8), (pot_value & 0xFF)};
-    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0E, data[0], data[1], 0x00, 0x00 };
+                    } else if (can_msg_in.data[2] == 0x0C) {
+                        if (can_msg_in.data[3] == 0x01) {
+                            analogWrite(BRK_L_PWM, can_msg_in.data[4]);
+                            digitalWrite(BRK_R_PWM, LOW);
 
-    // Send message
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
+                        } else if (can_msg_in.data[3] == 0x02) {
+                            digitalWrite(BRK_L_PWM, LOW);
+                            analogWrite(BRK_R_PWM, can_msg_in.data[4]);
 
-    // Return the potentiometer value
-    return pot_value;
+                        }
 
-}
+                        read_brk_pot();
 
-/** @brief Check the steering linear actuator position */
-int checkSteeringPos() { return analogRead(STR_POT); }
+                    }
+                }
 
-/** @brief Post the steering linear actuator positon to the bus */
-int postSteeringPos() {
-    // Build message
-    int pot_value = checkSteeringPos();
-    uint8_t data[2] = { (pot_value >> 8), (pot_value&0xFF)};
-    uint8_t message[8] = { 0x0C, 0x0C, 0x01, 0x0F, data[0], data[1], 0x00, 0x00 };
+            } else if (can_msg_in.data[0] == 0x0C) {
+                if (can_msg_in.data[1] == 0x01) {
+                    if (can_msg_in.data[2] == 0x0A)
+                        read_str_stat();
+                    else if (can_msg_in.data[3] == 0x0E) 
+                        read_str_whl();
+                    else if (can_msg_in.data[3] == 0x0F)
+                        read_str_pot();
 
-    // Send message
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return the potentiometer value
-    return pot_value;
-
-}
-
-/**
- * @brief Turn wheels left at a given speed
- * 
- * @param duty_cycle Speed
- */
-
-void turnLeft(int duty_cycle) {
-    // Check if enabled
-    if (!isSteeringEnabled()) { enableSteeringMotor(); }
-
-    // Set the motor controller
-    analogWrite(STR_L_PWM, 0);
-    analogWrite(STR_R_PWM, duty_cycle);
-
-    #ifdef DEBUG
-        // Report
-        Serial.println("Steering Left: " + String(duty_cycle));
-    #endif
-
-}
-
-/**
- * @brief Turn wheels left at a given speed
- * 
- * @param duty_cycle Speed
- */
-
-void turnRight(int duty_cycle) {
-    // Check if enabled
-    if (postSteeringPos() >= upper_steering_limit) { return; }
-    if (!isSteeringEnabled) { enableSteeringMotor(); }
-
-    // Set the motor controller
-    analogWrite(STR_R_PWM, 0);
-    analogWrite(STR_L_PWM, duty_cycle);
-
-    #ifdef DEBUG
-        // Report
-        Serial.println("Steering Right: " + String(duty_cycle));
-    #endif
-
-}
-
-/**
- * @brief Turn the wheels to the linear actuator position
- * 
- * @param duty_cycle Speed
- * @param pot_pos Desired potentiometer position
- */
-
-void turnWheelsToPos(int duty_cycle, int pot_pos) {
-    if (post_pos > upper_steering_limit) { return; }
-
-    // Get the current position
-    int current_pos = postSteeringPos();
-    int cnt;
-
-    // If the two positions are not equal
-    if (current_pos != pot_pos) {
-        // Decide the direction to tuen
-        if (pot_pos > current_pos) {
-            turnLeft(duty_cycle);
-
-        } else {
-            turnRight(duty_cycle);
-
-        }
-
-        // Loop to check
-        while (current_pos != pot_pos) { 
-            // Wait
-            cnt++;
-
-            // Periodic posts
-            if (cnt % 10 == 0) { current_pos = postSteeringPos(); }
             
-            // Timeout
-            if (cnt > 10000) { 
-                #ifdef DEBUG
-                    Serial.println("Turn Timeout");
-                #endif
+                } else if (can_msg_in.data[2] == 0x02) {
+                    if (can_msg_in.data[2] == 0x0A) 
+                        read_brk_stat();
+                    else if (can_msg_in.data[2] == 0x0F) 
+                        read_brk_pot();
 
-                uint8_t message[8] = {  };
-                can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-                return; 
-            
+                }
             }
-            
         }
-
-        // Rest the motor controller
-        resetSteeringMotor();
-
     }
+}
+
+void read_brk_pot() {
+    int pot_value = analogRead(BRK_POT);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x01;
+    can_msg_out.data[3] = 0x0F;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = pot_value >> 8;
+    can_msg_out.data[7] = pot_value & 0xFF;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void read_brk_stat() {
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x02;
+    can_msg_out.data[3] = 0x0A;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void read_str_pot() {
+    int pot_value = analogRead(STR_POT);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x01;
+    can_msg_out.data[3] = 0x0F;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = pot_value >> 8;
+    can_msg_out.data[7] = pot_value & 0xFF;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void read_str_stat() {
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x01;
+    can_msg_out.data[3] = 0x0A;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+long old_pos = -999;
+
+void read_str_whl() {
+    long pos = wheel_enc.read();
+    uint8_t change_id = 0x01;
+
+    if (pos > old_pos)
+        change_id = 0x02;
+    else if (pos < old_pos)
+        change_id = 0x03;
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x01;
+    can_msg_out.data[3] = 0x0E;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = change_id;
+
+    can.sendMessage(&can_msg_out);
+
 }

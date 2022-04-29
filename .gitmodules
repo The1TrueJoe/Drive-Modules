@@ -7,3 +7,9 @@
 [submodule "revision_1/rev1_accessory_module/arduino-mcp2515"]
 	path = revision_1/rev1_accessory_module/arduino-mcp2515
 	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
+[submodule "revision_1/rev1_direction_module/arduino-mcp2515"]
+	path = revision_1/rev1_direction_module/arduino-mcp2515
+	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
+[submodule "revision_1/rev1_direction_module/arduino-Encoder"]
+	path = revision_1/rev1_direction_module/arduino-Encoder
+	url = https://github.com/GSSM-AutoGolfCart/arduino-Encoder
