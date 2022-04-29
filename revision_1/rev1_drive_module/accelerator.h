@@ -18,9 +18,10 @@
 
 // --------------- Imports
 #include "config.h"
-#include "arduino-mcp4xxx/mcp4xxx.h"
+#include "mcp4xxx.h"
 
 // --------------- Accelerator Control
+using namespace icecave::arduino;
 
 // --------------- Function
 void accelerator_can_processing();

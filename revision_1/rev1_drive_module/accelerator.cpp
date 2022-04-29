@@ -17,7 +17,7 @@
 #include "accelerator.h"
 
 // --------------- Accelerator Control
-MCP4XXX accel_pot(SPEED_CTRL_CS);
+MCP4XXX* accel_pot = new MCP4XXX(SPEED_CTRL_CS);
 
 #ifdef ONE_WAY_POT
     int accel_wiper_pos = 0;
@@ -183,10 +183,10 @@ void set_accelerator(int pos) {
     #ifdef ONE_WAY_POT
         while (accel_wiper_pos != pos) {
             if (accel_wiper_pos > pos) {
-                accel_pot.decrement();
+                accel_pot -> decrement();
 
             } else if (accel_wiper_pos < pos) {
-                accel_pot.increment();
+                accel_pot -> increment();
 
             }
         }
@@ -201,9 +201,9 @@ void set_accelerator(int pos) {
 void zero_accelerator() { set_accelerator(0); }
 
 /** @brief Increment the accelerator */
-void inc_accelerator() { accel_pot.increment(); update_accelerator_pos(); }
+void inc_accelerator() { accel_pot -> increment(); update_accelerator_pos(); }
 /** @brief Decrement the accelerator */
-void dec_accelerator() { accel_pot.decrement(); update_accelerator_pos(); }
+void dec_accelerator() { accel_pot -> decrement(); update_accelerator_pos(); }
 
 /** @brief Enable the accelerator */
 void accelerator_enable() { digitalWrite(ACT_SW, HIGH); update_accelerator_enable(); }
