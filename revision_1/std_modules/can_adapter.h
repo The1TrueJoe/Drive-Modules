@@ -58,12 +58,7 @@ class CAN_Adapter {
             void printReceivedCANMessage();
             void printOutgoingCANMessage();
         #endif
-
-        #ifdef USES_EEPROM
-            void writeEEPROM32bit(int address, uint32_t value);
-            uint32_t readEEPROM32bit(int address);
-        #endif
-
+        
 };
 
 uint8_t getCANBoolean(bool condition);
