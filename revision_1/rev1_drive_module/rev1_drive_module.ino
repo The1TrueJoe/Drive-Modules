@@ -16,68 +16,222 @@
  * 
  */
 
-// Imports
-#include "accelerator.h"
-#include "accel_pedal.h"
-#include "key_switch.h"
+#include "mcp2515.h"
+#include "mcp4xxx.h"
 
-/**
- * @brief Main setup function
- * 
- */
+#define ACCEL_CS 9
+#define ACT_SW 4
+#define FWD_REV_SEL 5
+#define PEDAL_POT A3
+#define PEDAL_SW 3
+#define CAN_CS 10
+#define CAN_INT 2
+
+#define CAN_ID 0x003
+#define CAN_DLC 8
+
+using namespace icecave::arduino;
+
+MCP4XXX accel(ACCEL_CS);
+MCP2515 can(CAN_CS);
+
+volatile int wiper_pos = 0;
 
 void setup() {
-    // CAN
-    can -> setupCAN(CAN_CS, CAN_ID);
-    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_processing, FALLING);
+    can.reset();
+    can.setBitrate(CAN_125KBPS);
+    can.setNormalMode();
 
-    // Setup functions
-    accel_pedal_setup();
-    accelerator_setup();
-    keyswitch_setup();
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
+
+    noInterrupts();
+
+    pinMode(ACT_SW, OUTPUT);
+    pinMode(FWD_REV_SEL, OUTPUT);
+
+    pinMode(PEDAL_POT, INPUT);
+
+    interrupts();
 
 }
-
-int timing_counter = 0;
-
-/**
- * @brief Main loop to provide periodic updates
- * 
- */
 
 void loop() {
-    if (timing_counter % 10 == 0) {
-        update_accelerator_pos();
-        update_accelerator_enable();
-        update_keyswitch_pos();
 
-        timing_counter = 0;
+}
 
-    } 
-    
-    update_pedal_pot_pos();
+void can_irq() {
+    struct can_frame can_msg_in;
 
-    delay(10);
-    timing_counter++;
+    if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        if (can_msg_in.can_id == CAN_ID) {
+            if (can_msg_in.data[0] == 0x0A) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x0A) {
+                        pot_write(can_msg_in.data[3]);
+
+                    } else if (can_msg_in.data[2] == 0x0E) {
+                        if (can_msg_in.data[3] == 0x01)
+                            digitalWrite(ACT_SW, LOW);
+                        else if (can_msg_in.data[3] == 0x02) 
+                            digitalWrite(ACT_SW, HIGH);
+                    }
+
+                } else if (can_msg_in.data[1] == 0x0D) {
+                    if (can_msg_in.data[3] == 0x01) 
+                        digitalWrite(FWD_REV_SEL, LOW);
+                    else if (can_msg_in.data[3] == 0x02) 
+                        digitalWrite(FWD_REV_SEL, HIGH);
+
+                }
+
+            }
+        } else if (can_msg_in.data[0] == 0x0B) {
+            if (can_msg_in.data[1] == 0x0A) {
+                if (can_msg_in.data[2] == 0x01) 
+                    pot_inc();
+                else if (can_msg_in.data[2] == 0x02) 
+                    pot_dec();
+
+            }
+
+        } else if (can_msg_in.data[0] == 0x0C) {
+            if (can_msg_in.data[1] == 0x0A) {
+                if (can_msg_in.data[2] == 0x0A) 
+                    get_wiper_pos();
+                else if (can_msg_in.data[2] == 0x0D) 
+                    get_pedal_pos();
+                else if (can_msg_in.data[2] == 0x0E)
+                    get_en_status();
+                
+
+            } else if (can_msg_in.data[1] == 0x0D) {
+                get_direc();
+
+            }
+        }
+    }
+}
+
+void pot_write(int pos) {
+    if (pos > wiper_pos)
+        pot_inc();
+    else if (pos < wiper_pos)
+        pot_dec();
+
+}
+
+void pot_inc() { accel.increment(); wiper_pos++; }
+void pot_dec() { accel.decrement(); wiper_pos--; }
+
+void get_wiper_pos() {
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0A;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = wiper_pos >> 8;
+
+    can.sendMessage(&can_msg_out);
     
 }
 
-/**
- * @brief CAN Processing
- * 
- */
+void get_pedal_pos() {
+    struct can_frame can_msg_out;
 
-void can_processing() {
-    can -> getCANMessage();
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0D;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = wiper_pos >> 8;
+    can_msg_out.data[7] = wiper_pos & 0xFF;
 
-    switch (can -> can_msg_in.data[can_submodule_indentifier]) {
-        case accel_submodule_identifier:
-            accelerator_can_processing(); break;
-        case keyswitch_submodule_identifier:
-            keyswitch_can_processing(); break;
-        case accel_pedal_submodule_identifier:
-            accel_pedal_can_processing(); break;
-        default:
-            break;
-    }
+    can.sendMessage(&can_msg_out);
+    
+}
+
+void get_en_status() {
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0E;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void get_direc() {
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0D;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void pedal_act() {
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x02;
+
+    can.sendMessage(&can_msg_out);
+
+}
+
+void pedal_deact() {
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x01;
+
+    can.sendMessage(&can_msg_out);
+
 }
