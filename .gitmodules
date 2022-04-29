@@ -4,3 +4,6 @@
 [submodule "revision_1/rev1_drive_module/arduino-mcp2515"]
 	path = revision_1/rev1_drive_module/arduino-mcp2515
 	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
+[submodule "revision_1/rev1_accessory_module/arduino-mcp2515"]
+	path = revision_1/rev1_accessory_module/arduino-mcp2515
+	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
