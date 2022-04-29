@@ -52,11 +52,22 @@ void setup() {
 
     pinMode(PEDAL_POT, INPUT);
 
+    pot_write(0);
+    get_wiper_pos();
+
     interrupts();
 
 }
 
+int counter = 0;
+
 void loop() {
+    if (counter % 500 == 0) { get_direc(); get_en_status(); } 
+    if (counter % 10) { get_wiper_pos(); }
+    if (pedal_pressed) { get_pedal_pos(); }
+
+    delay(10);
+    counter++;
 
 }
 
@@ -69,19 +80,25 @@ void can_irq() {
                 if (can_msg_in.data[1] == 0x0A) {
                     if (can_msg_in.data[2] == 0x0A) {
                         pot_write(can_msg_in.data[3]);
+                        get_wiper_pos();
 
                     } else if (can_msg_in.data[2] == 0x0E) {
                         if (can_msg_in.data[3] == 0x01)
                             digitalWrite(ACT_SW, LOW);
                         else if (can_msg_in.data[3] == 0x02) 
                             digitalWrite(ACT_SW, HIGH);
+
+                        get_en_status();
+
                     }
 
                 } else if (can_msg_in.data[1] == 0x0D) {
-                    if (can_msg_in.data[3] == 0x01) 
+                    if (can_msg_in.data[2] == 0x01) 
                         digitalWrite(FWD_REV_SEL, LOW);
-                    else if (can_msg_in.data[3] == 0x02) 
+                    else if (can_msg_in.data[2] == 0x02) 
                         digitalWrite(FWD_REV_SEL, HIGH);
+
+                    get_direc();
 
                 }
 
@@ -92,6 +109,8 @@ void can_irq() {
                     pot_inc();
                 else if (can_msg_in.data[2] == 0x02) 
                     pot_dec();
+
+                get_wiper_pos();
 
             }
 
