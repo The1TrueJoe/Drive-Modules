@@ -36,6 +36,7 @@ MCP4XXX accel(ACCEL_CS);
 MCP2515 can(CAN_CS);
 
 volatile int wiper_pos = 0;
+volatile bool pedal_pressed = false;
 
 void setup() {
     can.reset();
@@ -62,13 +63,19 @@ void setup() {
 int counter = 0;
 
 void loop() {
-    if (counter % 500 == 0) { get_direc(); get_en_status(); } 
-    if (counter % 10) { get_wiper_pos(); }
-    if (pedal_pressed) { get_pedal_pos(); }
+    //if (counter % 10 == 0) { get_direc(); get_en_status(); } 
+    //if (counter % 2 == 0) { get_wiper_pos(); }
 
-    delay(10);
+    if (pedal_pressed) { 
+        get_pedal_pos(); 
+        delay(10);
+        
+    } else {
+        delay(1000);
+
+    }
+
     counter++;
-
 }
 
 void can_irq() {
@@ -217,6 +224,7 @@ void get_direc() {
 
 void pedal_act() {
     attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
+    pedal_pressed = true;
 
     struct can_frame can_msg_out;
 
@@ -237,6 +245,7 @@ void pedal_act() {
 
 void pedal_deact() {
     attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
+    pedal_pressed = false;
 
     struct can_frame can_msg_out;
 
