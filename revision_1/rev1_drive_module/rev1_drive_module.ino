@@ -24,6 +24,7 @@
 #define FWD_REV_SEL 5
 #define PEDAL_POT A3
 #define PEDAL_SW 3
+
 #define CAN_CS 10
 #define CAN_INT 2
 
@@ -32,7 +33,7 @@
 
 using namespace icecave::arduino;
 
-MCP4XXX accel(ACCEL_CS);
+MCP4XXX* accel(ACCEL_CS);
 MCP2515 can(CAN_CS);
 
 volatile int wiper_pos = 0;
@@ -52,6 +53,8 @@ void setup() {
     pinMode(FWD_REV_SEL, OUTPUT);
 
     pinMode(PEDAL_POT, INPUT);
+
+    accel = new MCP4XXX(ACCEL_CS);
 
     pot_write(0);
     get_wiper_pos();
@@ -147,8 +150,8 @@ void pot_write(int pos) {
 
 }
 
-void pot_inc() { accel.increment(); wiper_pos++; }
-void pot_dec() { accel.decrement(); wiper_pos--; }
+void pot_inc() { accel -> increment(); wiper_pos++; }
+void pot_dec() { accel -> decrement(); wiper_pos--; }
 
 void get_wiper_pos() {
     struct can_frame can_msg_out;
