@@ -13,3 +13,6 @@
 [submodule "revision_1/rev1_direction_module/arduino-Encoder"]
 	path = revision_1/rev1_direction_module/arduino-Encoder
 	url = https://github.com/GSSM-AutoGolfCart/arduino-Encoder
+[submodule "revision_1/tests/drive_mod_test/arduino-mcp4xxx"]
+	path = revision_1/tests/drive_mod_test/arduino-mcp4xxx
+	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp4xxx
