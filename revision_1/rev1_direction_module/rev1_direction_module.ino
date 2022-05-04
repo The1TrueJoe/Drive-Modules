@@ -22,6 +22,7 @@
 
 // Steering Linear Actuator Potentiometer
 #define STR_POT A5
+#define STEER_TOL 10 // Tolerance in Increments of ADC's pot value (0-1023)
 
 // Steering Wheel Input Encoder
 #define STR_WHL_ENC 3
@@ -57,7 +58,7 @@ void setup() {
     can.setNormalMode();
 
     pinMode(COM_LED, OUTPUT);
-
+  
     pinMode(STR_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
     pinMode(STR_R_PWM, OUTPUT);
@@ -162,6 +163,10 @@ void can_irq() {
                     }
                 }
 
+            } else if (can_msg_in.data[0] == 0x0B) {
+                if (can_msg_in.data[1] == 0x01) 
+                    steer_to_pos(can_msg_in.data[2] | (can_msg_in.data[3] << 8));
+
             } else if (can_msg_in.data[0] == 0x0C) {
                 if (can_msg_in.data[1] == 0x01) {
                     if (can_msg_in.data[2] == 0x0A)
@@ -229,6 +234,27 @@ void read_brk_stat() {
     digitalWrite(COM_LED, LOW);
 
 }
+
+void steer_to_pos(int pos, int power) {
+    int current_pos = read_str_pot();
+
+    while (abs(current_pos - pos) > STEER_TOL) {
+        if (current_pos < pos) {
+            analogWrite(STR_L_PWM, power);
+            digitalWrite(STR_R_PWM, LOW);
+
+        } else if (current_pos > pos) {
+            analogWrite(STR_R_PWM, power);
+            digitalWrite(STR_L_PWM, LOW);
+
+        }
+
+        current_pos = read_str_pot();
+    }
+
+    read_str_pot();
+}
+
 
 void read_str_pot() {
     digitalWrite(COM_LED, HIGH);
