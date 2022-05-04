@@ -236,6 +236,8 @@ void read_brk_stat() {
 }
 
 void steer_to_pos(int pos, int power) {
+    if (digitalRead(STR_ENABLE) != 1) { return; }
+
     int current_pos = read_str_pot();
 
     while (abs(current_pos - pos) > STEER_TOL) {
