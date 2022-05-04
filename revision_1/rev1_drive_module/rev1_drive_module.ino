@@ -33,7 +33,7 @@
 
 using namespace icecave::arduino;
 
-MCP4XXX* accel(ACCEL_CS);
+MCP4XXX* accel;
 MCP2515 can(CAN_CS);
 
 volatile int wiper_pos = 0;
