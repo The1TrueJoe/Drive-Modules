@@ -23,12 +23,12 @@
 #define HORN_RELAY 9
 
 // Relay IDs
-#define right_tail_id 0x00
-#define left_tail_id 0x01
-#define head_light_id 0x02
-#define tail_light_id 0x03
-#define horn_id 0x04
-#define rear_buzz_id 0x05
+#define right_tail_id 0x01
+#define left_tail_id 0x02
+#define head_light_id 0x03
+#define tail_light_id 0x04
+#define horn_id 0x05
+#define rear_buzz_id 0x06
 
 // Brake Pedal
 #define BRAKE_PEDAL 3
