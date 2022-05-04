@@ -39,6 +39,9 @@
 #define CAN_ID 0x002
 #define CAN_DLC 8
 
+#define COM_LED A0
+#define ACT_LED A1
+
 MCP2515 can(CAN_CS);
 
 bool blink_right = false;
@@ -55,12 +58,14 @@ bool honk_act = false;
  */
 
 void setup() {
+    pinMode(ACT_LED, OUTPUT);
+    digitalWrite(ACT_LED, HIGH);
+
     can.reset();
     can.setBitrate(CAN_125KBPS);
     can.setNormalMode();
 
-    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
+    pinMode(COM_LED, OUTPUT);
 
     // Relay setup
     pinMode(RIGHT_TAIL_RELAY, OUTPUT);
@@ -70,6 +75,11 @@ void setup() {
     pinMode(REAR_BUZZ_RELAY, OUTPUT);
     pinMode(HORN_RELAY, OUTPUT);
 
+    digitalWrite(ACT_LED, LOW);
+
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
+
 }
 
 /**
@@ -78,6 +88,8 @@ void setup() {
  */
 
 void loop() {
+    digitalWrite(ACT_LED, HIGH);
+
     if (honk_act) {
        delay(200);
        openRelay(horn_id);
@@ -89,16 +101,24 @@ void loop() {
     if (blink_head) { closeRelay(head_light_id); }
     if (blink_tail) { closeRelay(tail_light_id); }
 
+    digitalWrite(ACT_LED, LOW);
+
     delay(2000);
+
+    digitalWrite(ACT_LED, HIGH);
 
     if (blink_right) { openRelay(right_tail_id); }
     if (blink_left) { openRelay(left_tail_id); }
     if (blink_head) { openRelay(head_light_id); }
     if (blink_tail) { openRelay(tail_light_id); }
 
+    digitalWrite(ACT_LED, LOW);
+
     delay(2000);
 
+    digitalWrite(ACT_LED, HIGH);
     postRelays();
+    digitalWrite(ACT_LED, LOW);
     
 }
 
@@ -111,6 +131,8 @@ void can_irq() {
     struct can_frame can_msg_in;
 
     if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        digitalWrite(COM_LED, HIGH);
+
         if (can_msg_in.can_id == CAN_ID) {
             if (can_msg_in.data[0] == 0x0A) {
                 if (can_msg_in.data[2] == 0x01) {
@@ -146,13 +168,18 @@ void can_irq() {
                 }
             }
         }
+
+        digitalWrite(COM_LED, LOW);
+
     }
 }
 
 // --------- Pedals 
 
 void pedal_act() {
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_deact, FALLING);
+    noInterrupts();
+
+    digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
 
@@ -168,11 +195,15 @@ void pedal_act() {
     can_msg_out.data[7] = 0x02;
 
     can.sendMessage(&can_msg_out);
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_deact, FALLING);
+
+    digitalWrite(COM_LED, LOW);
 
 }
 
 void pedal_deact() {
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
+    digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
 
@@ -188,6 +219,8 @@ void pedal_deact() {
     can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
+
+    digitalWrite(COM_LED, LOW);
 
 }
 
@@ -328,6 +361,8 @@ bool checkRelay(uint8_t id) {
  */
 
 void postRelayStatus(uint8_t id) {
+    digitalWrite(COM_LED, HIGH);
+
     struct can_frame can_msg_out;
 
     can_msg_out.can_id = CAN_ID;
@@ -342,6 +377,7 @@ void postRelayStatus(uint8_t id) {
     can_msg_out.data[7] = 0;
 
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 

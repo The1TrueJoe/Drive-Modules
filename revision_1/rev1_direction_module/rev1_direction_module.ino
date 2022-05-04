@@ -35,6 +35,10 @@
 // Brake Actuator Potentiometer
 #define BRK_POT A4
 
+// LEDS
+#define COM_LED A0
+#define ACT_LED A1
+
 // CAN
 #define CAN_CS 8
 #define CAN_INT 2
@@ -45,13 +49,14 @@ MCP2515 can(CAN_CS);
 Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
 
 void setup() {
+    pinMode(ACT_LED, OUTPUT);
+    digitalWrite(ACT_LED, HIGH);
+
     can.reset();
     can.setBitrate(CAN_125KBPS);
     can.setNormalMode();
 
-    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
-
-    noInterrupts();
+    pinMode(COM_LED, OUTPUT);
 
     pinMode(STR_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
@@ -71,16 +76,20 @@ void setup() {
     digitalWrite(BRK_L_PWM, LOW);
     digitalWrite(BRK_R_PWM, LOW);
 
-    interrupts();
+    digitalWrite(ACT_LED, LOW);
+
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
 
 }
 
 void loop() {
+    digitalWrite(ACT_LED, HIGH);
     read_brk_pot();
     read_brk_stat();
     read_str_pot();
     read_str_stat();
     read_str_whl();
+    digitalWrite(ACT_LED, LOW);
 
     delay(2000);
 
@@ -90,6 +99,8 @@ void can_irq() {
     struct can_frame can_msg_in;
 
     if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        digitalWrite(ACT_LED, HIGH);
+
         if (can_msg_in.can_id == CAN_ID) {
             if (can_msg_in.data[0] == 0x0A) {
                 if (can_msg_in.data[1] == 0x01) {
@@ -170,10 +181,14 @@ void can_irq() {
                 }
             }
         }
+
+        digitalWrite(ACT_LED, LOW);
     }
 }
 
 void read_brk_pot() {
+    digitalWrite(COM_LED, HIGH);
+
     int pot_value = analogRead(BRK_POT);
 
     struct can_frame can_msg_out;
@@ -190,10 +205,13 @@ void read_brk_pot() {
     can_msg_out.data[7] = pot_value & 0xFF;
 
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
 void read_brk_stat() {
+    digitalWrite(COM_LED, HIGH);
+    
     struct can_frame can_msg_out;
 
     can_msg_out.can_id = CAN_ID;
@@ -206,12 +224,15 @@ void read_brk_stat() {
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
     can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
-
+    
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
 void read_str_pot() {
+    digitalWrite(COM_LED, HIGH);
+
     int pot_value = analogRead(STR_POT);
 
     struct can_frame can_msg_out;
@@ -226,12 +247,15 @@ void read_str_pot() {
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = pot_value >> 8;
     can_msg_out.data[7] = pot_value & 0xFF;
-
+    
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
 void read_str_stat() {
+    digitalWrite(COM_LED, HIGH);
+
     struct can_frame can_msg_out;
 
     can_msg_out.can_id = CAN_ID;
@@ -246,12 +270,15 @@ void read_str_stat() {
     can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
 
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
 long old_pos = -999;
 
 void read_str_whl() {
+    digitalWrite(COM_LED, HIGH);
+
     long pos = wheel_enc.read();
     uint8_t change_id = 0x01;
 
@@ -274,5 +301,6 @@ void read_str_whl() {
     can_msg_out.data[7] = change_id;
 
     can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
