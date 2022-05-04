@@ -1,555 +1,315 @@
 /**
- * @file speed_control_module.ino
+ * @file rev1_drive_module.ino
  * 
  * @author Joseph Telaak
  * 
- * @brief Code for the speed control module
+ * @brief This module controls the golf cart's motor control unit.
+ *          It is responsible for switching between forward and reverse.
+ *          It reports input from the accelerator pedal and ouputs a potentiometer
+ *          signal to the motor control unit to act as the "pedal"
  * 
  * @version 0.1
  * 
- * @date 2022-03-23
+ * @date 2022-04-28
  * 
  * @copyright Copyright (c) 2022
  * 
  */
 
-// Libraries
-#include "module.h"
-#include "port_config.h"
+#include "mcp2515.h"
 #include "mcp4xxx.h"
 
-// Settings
-#define NO_DIGIPOT_READ
-#define RESET_BY_DECREMENT
-//#define HOLD
-//#define DEBUG
+#define ACCEL_CS 9
+#define ACT_SW 4
+#define FWD_REV_SEL 5
+#define PEDAL_POT A3
+#define PEDAL_SW 3
 
-// DigiPot Namespace
+#define CAN_CS 10
+#define CAN_INT 2
+
+#define CAN_ID 0x003
+#define CAN_DLC 8
+
+#define COM_LED A0
+#define ACT_LED A1
+
 using namespace icecave::arduino;
 
-// Buzzer
-volatile bool buzzer_enabled = false;
+MCP4XXX* accel;
+MCP2515 can(CAN_CS);
 
-// Digital Potentiometer
-volatile bool manual_accel = false;
-MCP4XXX* digi_pot;
-
-#ifdef NO_DIGIPOT_READ
-    volatile uint8_t wiper_pos = 0;
-    
-#endif
-
-// Timing
-long time_since_update = 0;
-#define UPDATE_INTERVAL 5000
-
-// --------- Arduino
-
-/**
- * @brief Arduino setup function
- * 
- */
+volatile int wiper_pos = 0;
+volatile bool pedal_pressed = false;
 
 void setup() {
-    // CAN ID
-    can_adapter -> m_can_id = drive_module_address;
+    pinMode(ACT_LED, OUTPUT);
+    digitalWrite(ACT_LED, HIGH);
 
-    // Standard module setup
-    standardModuleSetup(CAN_CS, 0xFF6);
+    can.reset();
+    can.setBitrate(CAN_125KBPS);
+    can.setNormalMode();
 
-    // Announce Ready
-    #ifdef HOLD
-        ready();
-        holdTillEnabled();
-    #endif
+    pinMode(ACT_SW, OUTPUT);
+    pinMode(FWD_REV_SEL, OUTPUT);
 
-    // Setup Interupts
-    attachInterrupt(digitalPinToInterrupt(CAN_INT), canLoop, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    pinMode(PEDAL_POT, INPUT);
 
-    // Setup
-    setupAccelerator();
-    setupDirectionSelector();
-    setupActivitySwitch();
-    setupPedal();
+    pinMode(COM_LED, OUTPUT);
+
+    accel = new MCP4XXX(ACCEL_CS);
+
+    pot_write(0);
+    get_wiper_pos();
+
+    digitalWrite(ACT_LED, LOW);
+
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
 
 }
 
-/**
- * @brief Arduino main periodic loop
- * 
- */
+int counter = 0;
 
 void loop() {
-    if (manual_accel) {
-        setAccelPos((postPedalPos() / 4) >> 8);
+    digitalWrite(ACT_LED, HIGH);
+
+    if (counter % 10 == 0) { get_direc(); get_en_status(); } 
+    if (counter % 2 == 0) { get_wiper_pos(); }
+
+    if (pedal_pressed) { 
+        get_pedal_pos(); 
+        digitalWrite(ACT_LED, LOW);
+
         delay(10);
+        
+    } else {
+        digitalWrite(ACT_LED, LOW);
 
-    }
+        counter++;
+        delay(1000);
 
-    if (millis() - time_since_update > UPDATE_INTERVAL) {
-        postAccelSetting();
-        postDirection();
-        postMovementEnabled();
-
-        if (!manual_accel) {
-            postPedalPos();
-            delay(100);
-
-        }
     }
 }
 
-/**
- * @brief CAN Message handling
- * 
- */
+void can_irq() {
+    struct can_frame can_msg_in;
 
-void canLoop() {
-    // Get message
-    if (!can_adapter -> getCANMessage()) { return; }
+    if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        digitalWrite(ACT_LED, HIGH);
 
-    standardModuleLoopHead();
+        if (can_msg_in.can_id == CAN_ID) {
+            if (can_msg_in.data[0] == 0x0A) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x0A) {
+                        pot_write(can_msg_in.data[3]);
+                        get_wiper_pos();
 
-    switch (can_adapter -> can_msg_in.data[0]) {
-        case 0x0A:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x0A:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0xA:
-                            setAccelPos(can_adapter -> can_msg_in.data[3]);
-                            break;
+                    } else if (can_msg_in.data[2] == 0x0E) {
+                        if (can_msg_in.data[3] == 0x01)
+                            digitalWrite(ACT_SW, LOW);
+                        else if (can_msg_in.data[3] == 0x02) 
+                            digitalWrite(ACT_SW, HIGH);
 
-                        case 0x0D:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableManualAccelInput();
-                                    break;
+                        get_en_status();
 
-                                case 0x02:
-                                    disableManualAccelInput();
-                                    break;
-
-                                default:
-                                    break;
-                            }
-
-                            break;
-
-                        case 0x0E:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableMovement();
-                                    break;
-
-                                case 0x02:
-                                    disableMovement();
-                                    break;
-
-                                default:
-                                    break;
-                            }
-
-                            break;
-
-                        default:
-                            break;
                     }
 
-                    break;
+                } else if (can_msg_in.data[1] == 0x0D) {
+                    if (can_msg_in.data[2] == 0x01) 
+                        digitalWrite(FWD_REV_SEL, LOW);
+                    else if (can_msg_in.data[2] == 0x02) 
+                        digitalWrite(FWD_REV_SEL, HIGH);
 
-                case 0x0D:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x01:
-                            forward();
-                            break;
+                    get_direc();
 
-                        case 0x02:
-                            reverse();
-                            break;
+                }
 
-                        case 0x0B:
-                            switch (can_adapter -> can_msg_in.data[3]) {
-                                case 0x01:
-                                    enableBuzzerCtrl();
-                                    break;
-
-                                case 0x02:
-                                    disableBuzzerCtrl();
-                                    break;
-
-                                default:
-                                    break;
-                            }
-
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    break;
-
-                default:
-                    break;
             }
+        } else if (can_msg_in.data[0] == 0x0B) {
+            if (can_msg_in.data[1] == 0x0A) {
+                if (can_msg_in.data[2] == 0x01) 
+                    pot_inc();
+                else if (can_msg_in.data[2] == 0x02) 
+                    pot_dec();
 
-            break;
-
-        case 0x0B:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x0A:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x01:
-                            incAccelPos();
-                            break;
-
-                        case 0x02:
-                            decAccelPos();
-                            break;
-
-                        case 0x0D:
-                            zeroAccelPos();
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    break;
-
-                default:
-                    break;
-            }
-
-            break;
-
-        case 0x0C:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x0A:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x0A:
-                            postAccelSetting();
-                            break;
-
-                        case 0x0D:
-                            postManualAccelInput();
-                            break;
-
-                        case 0x0E:
-                            postMovementEnabled();
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    break;
-
-                case 0x0B:
-                    postBuzzerEnable();
-                    break;
-
-                case 0x0D:
-                    postDirection();
-                    break;
-
-                default:
-                    break;
-            }
-
-            break;
-
-        default:
-            break;
-    }
-
-     standardModuleLoopTail();
-
-}
-
-// --------- Forward / Reverse
-
-/** @brief Setup the direction selector switch */
-void setupDirectionSelector() {
-    pinMode(FWD_REV_SEL, OUTPUT); 
-    forward();
-
-}
-
-/** @brief Set the direction to forwards */
-void forward() { 
-    // Set direction
-    digitalWrite(FWD_REV_SEL, LOW); 
-    postDirection();
-
-    // Buzzer control
-    if (buzzer_enabled) {
-        uint8_t message[8] = { 0x0A, 0x06, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        can_adapter -> sendCANMessage(accessory_module_address, message);
-
-    }
-    
-}
-
-/** @brief Set the direction to revers */
-void reverse() {
-    // Set direction switch
-    digitalWrite(FWD_REV_SEL, HIGH);
-    postDirection();
-
-    // Buzzzer control
-    if (buzzer_enabled) {
-        uint8_t message[8] = { 0x0A, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };
-        can_adapter -> sendCANMessage(accessory_module_address, message);
-
-    }
-
-}
-
-/** @brief Check if the direction is forwards */
-bool isForwards() { return digitalRead(FWD_REV_SEL) == LOW; }
-
-/** @brief Post the current direction of the drive system */
-void postDirection() {
-    // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0D, getCANBoolean(isForwards()), 0x00, 0x00, 0x00, 0x00};
-
-    // Send Message
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-}
-
-/** @brief Disable buzzzer activation */
-void disableBuzzerCtrl() { buzzer_enabled = false; }
-
-/** @brief Enable buzzer activation */
-void enableBuzzerCtrl() { buzzer_enabled = true; }
-
-/** @brief Report the buzzer enable statis*/
-void postBuzzerEnable() {
-    // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0B, getCANBoolean(buzzer_enabled), 0x00, 0x00, 0x00, 0x00};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-}
-
-// --------- Speed Control
-
-/** @brief Setup the accelerator */
-void setupAccelerator() {
-    digi_pot = new MCP4XXX(SPEED_CTRL_CS);
-    zeroAccelPos();
-
-}
-
-/** @brief Disable manual accelerator input and enable auto speed control */
-void disableManualAccelInput() { manual_accel = false; }
-
-/** @brief Enable manual selector input  */
-void enableManualAccelInput() { manual_accel = true; }
-
-/** @brief Check if manual accelerator input */
-bool isManualAccelInput() { return manual_accel; }
-
-/** @brief Post manual acclerator status */
-bool postManualAccelInput() {
-    int condition = isManualAccelInput();
-
-    // Build Message
-    uint8_t message[8] = { 0x0C, 0x0C, 0x0A, 0x0D, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return condition
-    return condition;
-
-} 
-
-/** @brief Zeroes the accelerator position */
-void zeroAccelPos() {
-    #ifdef RESET_BY_DECREMENT
-        #ifdef DEBUG
-            Serial.println("Reseting Wiper Pos by Decrementing");
-
-        #endif
-
-        // Reset Wiper
-        for (int i = 0; i < 260; i++) {
-            digi_pot->decrement();
-            
-        }
-
-    #else
-        digi_pot->write(0);
-    
-    #endif
-
-    postAccelSetting();
-
-}
-
-/** @brief Set the accelerator digital pot position */
-void setAccelPos(uint8_t pos) {
-    #ifdef RESET_BY_DECREMENT
-        uint8_t current_pos = getAccelSetting();
-
-        if (current_pos > pos) {
-            for (int i = current_pos; i < pos; i++) {
-                digi_pot->increment();
-
-                #ifdef NO_DIGIPOT_READ
-                    wiper_pos++;
-                #endif
+                get_wiper_pos();
 
             }
 
-        } else if (current_pos < pos) {
-            for (int i = current_pos; i > pos; i--) {
-                digi_pot->decrement();
+        } else if (can_msg_in.data[0] == 0x0C) {
+            if (can_msg_in.data[1] == 0x0A) {
+                if (can_msg_in.data[2] == 0x0A) 
+                    get_wiper_pos();
+                else if (can_msg_in.data[2] == 0x0D) 
+                    get_pedal_pos();
+                else if (can_msg_in.data[2] == 0x0E)
+                    get_en_status();
+                
 
-                #ifdef NO_DIGIPOT_READ
-                    wiper_pos--;
-                #endif
+            } else if (can_msg_in.data[1] == 0x0D) {
+                get_direc();
 
             }
         }
 
-    #else
-        digi_pot->write(pos);
-
-    #endif
-
-    postAccelSetting();
-
+        digitalWrite(ACT_LED, LOW);
+    }
 }
 
-/** @brief Increment the accelerator digital pot position */
-void incAccelPos() { 
-    digi_pot -> increment();
-
-    #ifdef NO_DIGIPOT_READ
-        wiper_pos++;
-
-    #endif
-
-    postAccelSetting();
-
-}
-
-/** @brief Decrement the accelerator digital pot position */
-void decAccelPos() { 
-    digi_pot->increment();
-
-    #ifdef NO_DIGIPOT_READ
-        wiper_pos--;
-
-    #endif
-
-    postAccelSetting();
-
-}
-
-/** @brief Get the acclerator wiper pos*/
-uint8_t getAccelSetting() {
-    #ifdef NO_DIGIPOT_READ
-        return wiper_pos;
-
-    #else
-        return digi_pot->readWiper();
-
-    #endif
-
-}
-
-/** @brief Report the accelerator digital pot position */
-uint8_t postAccelSetting() {
-    // Build Message
-    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0A, getAccelSetting(), 0x00, 0x00, 0x00};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return value
-    return wiper_pos;
-
-}
-
-// --------- Manual Accelerator Pedal
-
-/** @brief Setup the pedal */
-void setupPedal() {
-    pinMode(PEDAL_IN, INPUT);
-    pinMode(PEDAL_SW, INPUT);
-
-}
-
-/** @brief Read the pedal pos */
-int readPedalPos() { return analogRead(PEDAL_IN); }
-
-/** @brief Post the pedal pos*/
-int postPedalPos() {
-    // Build Message
-    int pedal_pos = readPedalPos();
-    uint8_t data[2] = { (pedal_pos >> 8), (pedal_pos & 0xFF)};
-    uint8_t message[8] = {};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Return value
-    return pedal_pos;
-
-}
-
-/** @brief The Accelerator Pedal is Pressed */
-void pedalPressed() {
-    // Build Message
-    uint8_t message[8] = {};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
-
-    // Enable the movement relay if the pedal is pressed
-    if (manual_accel) {
-        enableMovement();
-
+void pot_write(int pos) {
+    while (pos != wiper_pos) {
+        if (pos > wiper_pos)
+            pot_inc();
+        else if (pos < wiper_pos)
+            pot_dec();
     }
 
-    // Attach Interupt
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedalPressed, RISING);
+    get_wiper_pos();
 
 }
 
-// --------- Motor Activity
+void pot_inc() { accel -> increment(); wiper_pos++; }
+void pot_dec() { accel -> decrement(); wiper_pos--; }
 
-/** @brief Setup the enable switch */
-void setupActivitySwitch() {
-    pinMode(ACT_SW, OUTPUT);
+void get_wiper_pos() {
+    digitalWrite(COM_LED, HIGH);
 
-    disableMovement();
+    struct can_frame can_msg_out;
 
-}
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0A;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = wiper_pos >> 8;
+    can_msg_out.data[7] = wiper_pos & 0xFF;
 
-/** @brief Disable the drive motor controller */
-void disableMovement() { 
-    digitalWrite(ACT_SW, HIGH);
-    postMovementEnabled();
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
     
 }
 
-/** @brief Enable the drive motor controller */
-void enableMovement() {
-    digitalWrite(ACT_SW, LOW);
-    postMovementEnabled();
+void get_pedal_pos() {
+    digitalWrite(COM_LED, HIGH);
+
+    int pedal_pos = analogRead(PEDAL_POT);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0D;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = pedal_pos >> 8;
+    can_msg_out.data[7] = pedal_pos & 0xFF;
+
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
+    
+}
+
+void get_en_status() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = 0x0E;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
+
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
-/** @brief Check if movement is enabled */
-bool isMovementEnabled() { return digitalRead(ACT_SW) == LOW; }
+void get_direc() {
+    digitalWrite(COM_LED, HIGH);
 
-/** @brief post if movement is enabled */
-bool postMovementEnabled() {
-    int condition = isMovementEnabled();
+    struct can_frame can_msg_out;
 
-    // Build Message
-    uint8_t message[8] = {0x0C, 0x0C, 0x0A, 0x0E, getCANBoolean(condition), 0x00, 0x00, 0x00};
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0D;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
 
-    // Return condition
-    return condition;
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
+
+}
+
+void pedal_act() {
+    noInterrupts();
+
+    digitalWrite(COM_LED, HIGH);
+
+    pedal_pressed = true;
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x02;
+
+    can.sendMessage(&can_msg_out);
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
+
+    digitalWrite(COM_LED, LOW);
+
+}
+
+void pedal_deact() {
+    noInterrupts();
+
+    digitalWrite(COM_LED, HIGH);
+
+    pedal_pressed = false;
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x01;
+
+    can.sendMessage(&can_msg_out);
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
+
+    digitalWrite(COM_LED, LOW);
 
 }

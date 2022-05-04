@@ -12,13 +12,43 @@
  * 
  */
 
-#include "module.h"
-#include "port_config.h"
+#include "mcp2515.h"
 
-// Time
-volatile bool continue_loop = true;
-volatile int def_blink_interval = 2000;
-volatile int def_horn_interval = 50;
+// Relays
+#define LEFT_TAIL_RELAY 8
+#define RIGHT_TAIL_RELAY 7
+#define TAIL_LIGHT_RELAY 6
+#define HEAD_LIGHT_RELAY 5
+#define REAR_BUZZ_RELAY 4
+#define HORN_RELAY 9
+
+// Relay IDs
+#define right_tail_id 0x01
+#define left_tail_id 0x02
+#define head_light_id 0x03
+#define tail_light_id 0x04
+#define horn_id 0x05
+#define rear_buzz_id 0x06
+
+// Brake Pedal
+#define BRAKE_PEDAL 3
+
+#define CAN_CS 10
+#define CAN_INT 2
+
+#define CAN_ID 0x002
+#define CAN_DLC 8
+
+#define COM_LED A0
+#define ACT_LED A1
+
+MCP2515 can(CAN_CS);
+
+bool blink_right = false;
+bool blink_left = false;
+bool blink_head = false;
+bool blink_tail = false;
+bool honk_act = false;
 
 // --------- Arduino
 
@@ -28,19 +58,27 @@ volatile int def_horn_interval = 50;
  */
 
 void setup() {
-    // Standard module setup
-    standardModuleSetup(10, 0xFF2);
+    pinMode(ACT_LED, OUTPUT);
+    digitalWrite(ACT_LED, HIGH);
 
-    // Announce Ready
-    ready();
-    holdTillEnabled();
+    can.reset();
+    can.setBitrate(CAN_125KBPS);
+    can.setNormalMode();
 
-    // Setup Interupts
-    attachInterrupt(digitalPinToInterrupt(Default_CAN_INT), canLoop, FALLING);
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedalPressed, RISING);
+    pinMode(COM_LED, OUTPUT);
 
     // Relay setup
-    setupRelays();
+    pinMode(RIGHT_TAIL_RELAY, OUTPUT);
+    pinMode(LEFT_TAIL_RELAY, OUTPUT);
+    pinMode(TAIL_LIGHT_RELAY, OUTPUT);
+    pinMode(HEAD_LIGHT_RELAY, OUTPUT);
+    pinMode(REAR_BUZZ_RELAY, OUTPUT);
+    pinMode(HORN_RELAY, OUTPUT);
+
+    digitalWrite(ACT_LED, LOW);
+
+    attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
 
 }
 
@@ -50,43 +88,38 @@ void setup() {
  */
 
 void loop() {
-    switch (can_adapter -> can_msg_in.data[0]) {
-        case 0x0B:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x0B:
-                    int m_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_blink_interval;
-                    int id = can_adapter -> can_msg_in.data[2];
+    digitalWrite(ACT_LED, HIGH);
 
-                    while (continue_loop) {
-                        closeRelay(id);
-                        delay(m_interval);
-                        openRelay(id);
-
-                    }
-
-                    break;
-
-
-                case 0x01:
-                    int n_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_horn_interval;
-
-                    closeRelay(horn_id);
-                    delay(n_interval);
-                    openRelay(horn_id);
-
-                    break;
-                    
-                default:
-                    break;
-
-            }
-
-            break;
-
-        default:
-            break;
+    if (honk_act) {
+       delay(200);
+       openRelay(horn_id);
 
     }
+
+    if (blink_right) { closeRelay(right_tail_id); }
+    if (blink_left) { closeRelay(left_tail_id); }
+    if (blink_head) { closeRelay(head_light_id); }
+    if (blink_tail) { closeRelay(tail_light_id); }
+
+    digitalWrite(ACT_LED, LOW);
+
+    delay(2000);
+
+    digitalWrite(ACT_LED, HIGH);
+
+    if (blink_right) { openRelay(right_tail_id); }
+    if (blink_left) { openRelay(left_tail_id); }
+    if (blink_head) { openRelay(head_light_id); }
+    if (blink_tail) { openRelay(tail_light_id); }
+
+    digitalWrite(ACT_LED, LOW);
+
+    delay(2000);
+
+    digitalWrite(ACT_LED, HIGH);
+    postRelays();
+    digitalWrite(ACT_LED, LOW);
+    
 }
 
 /**
@@ -94,111 +127,109 @@ void loop() {
  * 
  */
 
-void canLoop() {
-    // Get message
-    if (!can_adapter -> getCANMessage()) { return; }
+void can_irq() {
+    struct can_frame can_msg_in;
 
-    standardModuleLoopHead();
+    if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
+        digitalWrite(COM_LED, HIGH);
 
-    switch (can_adapter -> can_msg_in.data[0]) {
-        case 0x0A:
-            switch (can_adapter -> can_msg_in.data[2]) {
-                case 0x01:
-                    openRelay(can_adapter -> can_msg_in.data[1]);
-                    break;
+        if (can_msg_in.can_id == CAN_ID) {
+            if (can_msg_in.data[0] == 0x0A) {
+                if (can_msg_in.data[2] == 0x01) {
+                    closeRelay(can_msg_in.data[1]);
 
-                case 0x02:
-                    closeRelay(can_adapter -> can_msg_in.data[1]);
-                    continue_loop = false;
-                    break;
+                } else if (can_msg_in.data[2] == 0x01) {
+                    openRelay(can_msg_in.data[1]);
 
-                default:
-                    break;
+                    if (blink_right && can_msg_in.data[1] == right_tail_id)
+                        blink_right = false;
+                    else if (blink_left && can_msg_in.data[1] == left_tail_id)
+                        blink_left = false;
+                    else if (blink_head && can_msg_in.data[1] == head_light_id)
+                        blink_head = false;
+                    else if (blink_tail && can_msg_in.data[1] == tail_light_id)
+                        blink_tail = false;
 
+                }
+
+                postRelayStatus(can_msg_in.data[1]);
+                
+            } else if (can_msg_in.data[0] == 0x0B) {
+                if (can_msg_in.data[1] == 0x01) {
+                    openRelay(horn_id);
+                    honk_act = true;
+                }
+                
+
+            } else if (can_msg_in.data[0] == 0x0C) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    postRelayStatus(can_msg_in.data[2]);
+
+                }
             }
+        }
 
-            break;
-
-        case 0x0C:
-            switch (can_adapter -> can_msg_in.data[1]) {
-                case 0x0A:
-                    postRelayStatus(can_adapter -> can_msg_in.data[2]);
-                    break;
-
-                case 0x0E:
-                    switch (can_adapter -> can_msg_in.data[2]) {
-                        case 0x01:
-                            def_blink_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_blink_interval;
-                            break;
-
-                        case 0x02:
-                            def_horn_interval = (can_adapter -> can_msg_in.data[3] != 0x00) ? (convertToInt(can_adapter -> can_msg_in.data[3]) * convertToInt(can_adapter -> can_msg_in.data[4])) : def_horn_interval;
-                            break;
-
-                        default:
-                            break;
-                            
-                    }
-
-                    break;
-
-                default:
-                    break;
-
-            }
-
-            break;
-            
-        default:
-            break;
+        digitalWrite(COM_LED, LOW);
 
     }
-
-    standardModuleLoopTail();
-    
 }
 
 // --------- Pedals 
 
-/** @brief When pedal is pressed */
-void pedalPressed() {
-    closeRelay(tail_light_id);
-    attachInterrupt(BRAKE_PEDAL, pedalReleased, FALLING);
+void pedal_act() {
+    noInterrupts();
+
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x02;
+
+    can.sendMessage(&can_msg_out);
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_deact, FALLING);
+
+    digitalWrite(COM_LED, LOW);
 
 }
 
-/** @brief When pedal is released */
-void pedalReleased() {
-    openRelay(tail_light_id);
-    attachInterrupt(BRAKE_PEDAL, pedalPressed, RISING);
+void pedal_deact() {
+    noInterrupts();
+
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0E;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0x01;
+
+    can.sendMessage(&can_msg_out);
+
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
+
+    digitalWrite(COM_LED, LOW);
 
 }
 
 // --------- Relay control
-
-/** @brief Setup the relays  */
-void setupRelays() {
-    #ifdef DEBUG
-        // Set pinmode
-        Serial.println("Relays: Setting up Relay Control Pins");
-    #endif
-
-    pinMode(RIGHT_TAIL_RELAY, OUTPUT);
-    pinMode(LEFT_TAIL_RELAY, OUTPUT);
-    pinMode(TAIL_LIGHT_RELAY, OUTPUT);
-    pinMode(HEAD_LIGHT_RELAY, OUTPUT);
-    pinMode(REAR_BUZZ_RELAY, OUTPUT);
-    pinMode(HORN_RELAY, OUTPUT);
-
-    // Reset relays
-    resetRelays();
-
-    #ifdef DEBUG
-        // Setup complete
-        Serial.println("Relays: Setup Complete");
-    #endif
-
-}
 
 /** @brief Reset all relays */
 void resetRelays() {
@@ -335,29 +366,23 @@ bool checkRelay(uint8_t id) {
  */
 
 void postRelayStatus(uint8_t id) {
-    #ifdef DEBUG
-        // Build Message
-        if (checkRelay(id)) {
-            Serial.println("Relay " + String(id) + " is Open");
-            uint8_t status = 0x01;
+    digitalWrite(COM_LED, HIGH);
 
-        } else {
-            Serial.println("Relay " + String(id) + " is Closed");
-            uint8_t status = 0x02;
+    struct can_frame can_msg_out;
 
-        }
-        
-    #else
-        // Build Message
-        uint8_t status = checkRelay(id) ? 0x01 : 0x02;
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0A;
+    can_msg_out.data[3] = id;
+    can_msg_out.data[4] = checkRelay(id) ? 0x01 : 0x02;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0;
 
-    #endif
-
-    // Build Message
-    uint8_t message[can_adapter -> m_can_dlc] = { 0x0C, 0x0C, 0x0A, id, status, 0x00, 0x00, 0x00 };
-
-    // Send Message
-    can_adapter -> sendCANMessage(can_adapter -> m_can_id, message);
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
 
 }
 
