@@ -280,7 +280,7 @@ void pedal_act() {
     interrupts();
     attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
 
-    digitalWrite(COM_LED, LOW)
+    digitalWrite(COM_LED, LOW);
 
 }
 
