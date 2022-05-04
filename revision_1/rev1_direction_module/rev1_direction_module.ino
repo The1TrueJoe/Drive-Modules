@@ -58,7 +58,7 @@ void setup() {
     can.setNormalMode();
 
     pinMode(COM_LED, OUTPUT);
-
+  
     pinMode(STR_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
     pinMode(STR_R_PWM, OUTPUT);
@@ -255,7 +255,8 @@ void steer_to_pos(int pos, int power) {
     read_str_pot();
 }
 
-int read_str_pot() {
+
+void read_str_pot() {
     digitalWrite(COM_LED, HIGH);
 
     int pot_value = analogRead(STR_POT);
@@ -275,8 +276,6 @@ int read_str_pot() {
     
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
-
-    return pot_value;
 
 }
 
