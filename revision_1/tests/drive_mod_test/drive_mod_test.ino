@@ -2,9 +2,9 @@
 
 #include <Arduino.h>
 
-//#define TEST_FWDREV
-//#define TEST_ACCL_ACT
-//#define TEST_ACCL
+#define TEST_FWDREV
+#define TEST_ACCL_ACT
+#define TEST_ACCL
 #define TEST_PEDAL_SW
 #define TEST_PEDAL_POT
 
