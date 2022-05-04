@@ -203,6 +203,8 @@ void pedal_act() {
 }
 
 void pedal_deact() {
+    noInterrupts();
+
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
@@ -219,6 +221,9 @@ void pedal_deact() {
     can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
+
+    interrupts();
+    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
 
     digitalWrite(COM_LED, LOW);
 
