@@ -185,8 +185,8 @@ void get_wiper_pos() {
     can_msg_out.data[3] = 0x0A;
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = wiper_pos >> 8;
+    can_msg_out.data[6] = wiper_pos >> 8;
+    can_msg_out.data[7] = wiper_pos & 0xFF;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -195,6 +195,8 @@ void get_wiper_pos() {
 
 void get_pedal_pos() {
     digitalWrite(COM_LED, HIGH);
+
+    int pedal_pos = analogRead(PEDAL_POT);
 
     struct can_frame can_msg_out;
 
@@ -206,8 +208,8 @@ void get_pedal_pos() {
     can_msg_out.data[3] = 0x0D;
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = wiper_pos >> 8;
-    can_msg_out.data[7] = wiper_pos & 0xFF;
+    can_msg_out.data[6] = pedal_pos >> 8;
+    can_msg_out.data[7] = pedal_pos & 0xFF;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
