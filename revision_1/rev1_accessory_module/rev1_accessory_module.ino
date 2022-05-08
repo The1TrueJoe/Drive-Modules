@@ -22,6 +22,9 @@
 #define REAR_BUZZ_RELAY 4
 #define HORN_RELAY 9
 
+#define RELAY_ACT LOW
+#define RELAY_DEACT HIGH
+
 // Relay IDs
 #define right_tail_id 0x01
 #define left_tail_id 0x02
@@ -76,6 +79,8 @@ void setup() {
     pinMode(HORN_RELAY, OUTPUT);
 
     digitalWrite(ACT_LED, LOW);
+
+    resetRelays();
 
     attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
     attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
@@ -251,27 +256,27 @@ void resetRelays() {
 void closeRelay(uint8_t id) {
     switch (id) {
         case right_tail_id:
-            digitalWrite(RIGHT_TAIL_RELAY, LOW); 
+            digitalWrite(RIGHT_TAIL_RELAY, RELAY_DEACT); 
             break;
 
         case left_tail_id:
-            digitalWrite(LEFT_TAIL_RELAY, LOW); 
+            digitalWrite(LEFT_TAIL_RELAY, RELAY_DEACT); 
             break;
 
         case tail_light_id:
-            digitalWrite(TAIL_LIGHT_RELAY, LOW);
+            digitalWrite(TAIL_LIGHT_RELAY, RELAY_DEACT);
             break;
 
         case head_light_id:
-            digitalWrite(HEAD_LIGHT_RELAY, LOW); 
+            digitalWrite(HEAD_LIGHT_RELAY, RELAY_DEACT); 
             break;
 
         case horn_id:
-            digitalWrite(HORN_RELAY, LOW); 
+            digitalWrite(HORN_RELAY, RELAY_DEACT); 
             break;
 
         case rear_buzz_id:
-            digitalWrite(REAR_BUZZ_RELAY, LOW);
+            digitalWrite(REAR_BUZZ_RELAY, RELAY_DEACT);
             break;
 
         default:
@@ -292,27 +297,27 @@ void closeRelay(uint8_t id) {
 void openRelay(uint8_t id) {
     switch (id) {
         case right_tail_id:
-            digitalWrite(RIGHT_TAIL_RELAY, HIGH); 
+            digitalWrite(RIGHT_TAIL_RELAY, RELAY_ACT); 
             break;
 
         case left_tail_id:
-            digitalWrite(LEFT_TAIL_RELAY, HIGH); 
+            digitalWrite(LEFT_TAIL_RELAY, RELAY_ACT); 
             break;
 
         case tail_light_id:
-            digitalWrite(TAIL_LIGHT_RELAY, HIGH);
+            digitalWrite(TAIL_LIGHT_RELAY, RELAY_ACT);
             break;
 
         case head_light_id:
-            digitalWrite(HEAD_LIGHT_RELAY, HIGH); 
+            digitalWrite(HEAD_LIGHT_RELAY, RELAY_ACT); 
             break;
 
         case horn_id:
-            digitalWrite(HORN_RELAY, HIGH); 
+            digitalWrite(HORN_RELAY, RELAY_ACT); 
             break;
 
         case rear_buzz_id:
-            digitalWrite(REAR_BUZZ_RELAY, HIGH);
+            digitalWrite(REAR_BUZZ_RELAY, RELAY_ACT);
             break;
 
         default:
@@ -336,22 +341,22 @@ void openRelay(uint8_t id) {
 bool checkRelay(uint8_t id) {
     switch (id) {
         case right_tail_id:
-            return digitalRead(RIGHT_TAIL_RELAY) == HIGH;
+            return digitalRead(RIGHT_TAIL_RELAY) == RELAY_ACT;
 
         case left_tail_id:
-            return digitalRead(LEFT_TAIL_RELAY) == HIGH;
+            return digitalRead(LEFT_TAIL_RELAY) == RELAY_ACT;
 
         case tail_light_id:
-            return digitalRead(TAIL_LIGHT_RELAY) == HIGH;
+            return digitalRead(TAIL_LIGHT_RELAY) == RELAY_ACT;
 
         case head_light_id:
-            return digitalRead(HEAD_LIGHT_RELAY) == HIGH;
+            return digitalRead(HEAD_LIGHT_RELAY) == RELAY_ACT;
 
         case horn_id:
-            return digitalRead(HORN_RELAY) == HIGH;
+            return digitalRead(HORN_RELAY) == RELAY_ACT;
         
         case rear_buzz_id:
-            return digitalRead(REAR_BUZZ_RELAY) == HIGH;
+            return digitalRead(REAR_BUZZ_RELAY) == RELAY_ACT;
 
         default:
             return false;
