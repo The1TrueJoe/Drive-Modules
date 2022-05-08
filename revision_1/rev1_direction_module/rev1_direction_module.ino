@@ -44,7 +44,7 @@
 #define CAN_CS 8
 #define CAN_INT 2
 #define CAN_DLC 8
-#define CAN_ID 0x002
+#define CAN_ID 0x001
 
 MCP2515 can(CAN_CS);
 Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
