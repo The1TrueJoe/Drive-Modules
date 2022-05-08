@@ -165,7 +165,7 @@ void can_irq() {
 
             } else if (can_msg_in.data[0] == 0x0B) {
                 if (can_msg_in.data[1] == 0x01) 
-                    steer_to_pos(can_msg_in.data[2] | (can_msg_in.data[3] << 8));
+                    steer_to_pos(can_msg_in.data[2] | (can_msg_in.data[3] << 8), can_msg_in.data[3] != 0 ? 255 : can_msg_in.data[4]);
 
             } else if (can_msg_in.data[0] == 0x0C) {
                 if (can_msg_in.data[1] == 0x01) {
