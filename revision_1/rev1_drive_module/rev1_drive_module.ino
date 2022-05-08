@@ -209,27 +209,18 @@ void can_irq() {
             }
         }
 
-        clearMessageBuffer();
+        // Clear the message buffer
+        can_msg_in.data[0] = 0;
+        can_msg_in.data[1] = 0;
+        can_msg_in.data[2] = 0;
+        can_msg_in.data[3] = 0;
+        can_msg_in.data[4] = 0;
+        can_msg_in.data[5] = 0;
+        can_msg_in.data[6] = 0;
+        can_msg_in.data[7] = 0;
 
         digitalWrite(ACT_LED, LOW);
     }
-}
-
-/**
- * @brief Clear the message buffer
- * 
- */
-
-void clearMessageBuffer() {
-    can_msg_out.data[0] = 0;
-    can_msg_out.data[1] = 0;
-    can_msg_out.data[2] = 0;
-    can_msg_out.data[3] = 0;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = 0;
-
 }
 
 /**
