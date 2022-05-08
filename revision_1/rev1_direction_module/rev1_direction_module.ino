@@ -155,9 +155,10 @@ void can_irq() {
                         } else if (can_msg_in.data[3] == 0x02) {
                             digitalWrite(STR_ENABLE, HIGH);
 
-                        }
+                        } else {
+                            read_str_state();
 
-                        read_str_state();
+                        }
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01) {
@@ -168,10 +169,10 @@ void can_irq() {
                             digitalWrite(STR_L_PWM, LOW);
                             analogWrite(STR_R_PWM, can_msg_in.data[4]);
 
+                        } else {
+                            read_str_pot();
+
                         }
-
-                        read_str_pot();
-
                     }
 
                 } else if (can_msg_in.data[1] == 0x02) {
@@ -184,9 +185,10 @@ void can_irq() {
                         } else if (can_msg_in.data[3] == 0x02) {
                             digitalWrite(BRK_ENABLE, HIGH);
 
-                        }
+                        } else {
+                            read_brk_state();
 
-                        read_brk_state();
+                        }
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01) {
@@ -197,10 +199,10 @@ void can_irq() {
                             digitalWrite(BRK_L_PWM, LOW);
                             analogWrite(BRK_R_PWM, can_msg_in.data[4]);
 
+                        } else {
+                            read_brk_pot();
+
                         }
-
-                        read_brk_pot();
-
                     }
                 }
 

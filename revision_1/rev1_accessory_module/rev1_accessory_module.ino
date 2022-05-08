@@ -184,9 +184,10 @@ void can_irq() {
                     else if (blink_tail && can_msg_in.data[1] == tail_light_id)
                         blink_tail = false;
 
-                }
+                } else {
+                    postRelayStatus(can_msg_in.data[1]);
 
-                postRelayStatus(can_msg_in.data[1]);
+                }
                 
             } else if (can_msg_in.data[0] == 0x0B) {
                 if (can_msg_in.data[1] == 0x01) {

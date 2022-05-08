@@ -166,8 +166,8 @@ void can_irq() {
                             digitalWrite(ACT_SW, LOW);
                         else if (can_msg_in.data[3] == 0x02) 
                             digitalWrite(ACT_SW, HIGH);
-
-                        get_en_status();
+                        else
+                            get_en_status();
 
                     }
 
@@ -176,8 +176,8 @@ void can_irq() {
                         digitalWrite(FWD_REV_SEL, LOW);
                     else if (can_msg_in.data[2] == 0x02) 
                         digitalWrite(FWD_REV_SEL, HIGH);
-
-                    get_direc();
+                    else
+                        get_direc();
 
                 }
 
@@ -188,8 +188,8 @@ void can_irq() {
                     pot_inc();
                 else if (can_msg_in.data[2] == 0x02) 
                     pot_dec();
-
-                get_wiper_pos();
+                else
+                    get_wiper_pos();
 
             }
 
