@@ -100,6 +100,9 @@ void setup() {
     digitalWrite(BRK_L_PWM, LOW);
     digitalWrite(BRK_R_PWM, LOW);
 
+    // Announce ready to CAN bus
+    announce();
+
     // LED Low
     digitalWrite(ACT_LED, LOW);
 
@@ -123,8 +126,8 @@ void loop() {
     read_str_whl();
     digitalWrite(ACT_LED, LOW);
 
-    // 2 Second Delay
-    delay(2000);
+    // 5 Second Delay
+    delay(5000);
 
 }
 
@@ -243,6 +246,37 @@ void can_irq() {
         digitalWrite(ACT_LED, LOW);
 
     }
+}
+
+/**
+ * @brief Get the wiper pos
+ * 
+ */
+
+void announce() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 1;
+    can_msg_out.data[1] = 2;
+    can_msg_out.data[2] = 3;
+    can_msg_out.data[3] = 4;
+    can_msg_out.data[4] = 5;
+    can_msg_out.data[5] = 6;
+    can_msg_out.data[6] = 7;
+    can_msg_out.data[7] = 8;
+
+    for (int i = 0; i < 5; i++) {
+        can.sendMessage(&can_msg_out);
+        delay(100);
+
+    }
+    
+    digitalWrite(COM_LED, LOW);
+    
 }
 
 /**

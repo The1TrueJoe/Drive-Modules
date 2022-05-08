@@ -101,7 +101,10 @@ void setup() {
     pot_write(0);
     get_wiper_pos();
 
-    // LED low
+    // Announce ready to CAN bus
+    announce();
+
+    // LED Low
     digitalWrite(ACT_LED, LOW);
 
     // Interrupts
@@ -119,24 +122,38 @@ int counter = 0;
  */
 
 void loop() {
-    digitalWrite(ACT_LED, HIGH);
-
-    if (counter % 10 == 0) { get_direc(); get_en_status(); } 
-    if (counter % 2 == 0) { get_wiper_pos(); }
-
-    if (pedal_pressed) { 
-        get_pedal_pos(); 
-        digitalWrite(ACT_LED, LOW);
-
-        delay(10);
+    while (pedal_pressed) { 
+        digitalWrite(ACT_LED, HIGH);
         
-    } else {
+        get_pedal_pos(); 
+        if (counter % 5 == 0) { get_wiper_pos(); }
+
         digitalWrite(ACT_LED, LOW);
 
+        delay(100);
         counter++;
-        delay(1000);
+        
+    } 
+    
+    if (counter % 5 == 0) { 
+        get_wiper_pos();   
 
+        if (counter >= 10 == 0) {
+            digitalWrite(ACT_LED, HIGH);
+
+            get_direc(); 
+            get_en_status(); 
+
+            counter = 0;
+
+            digitalWrite(ACT_LED, LOW);
+
+        }
     }
+
+    delay(1000);
+    counter++;
+
 }
 
 /**
@@ -221,6 +238,37 @@ void can_irq() {
 
         digitalWrite(ACT_LED, LOW);
     }
+}
+
+/**
+ * @brief Get the wiper pos
+ * 
+ */
+
+void announce() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 1;
+    can_msg_out.data[1] = 2;
+    can_msg_out.data[2] = 3;
+    can_msg_out.data[3] = 4;
+    can_msg_out.data[4] = 5;
+    can_msg_out.data[5] = 6;
+    can_msg_out.data[6] = 7;
+    can_msg_out.data[7] = 8;
+
+    for (int i = 0; i < 5; i++) {
+        can.sendMessage(&can_msg_out);
+        delay(100);
+
+    }
+    
+    digitalWrite(COM_LED, LOW);
+    
 }
 
 /**

@@ -103,6 +103,9 @@ void setup() {
     openRelay(tail_light_id);
     openRelay(head_light_id);
 
+    // Announce ready to CAN bus
+    announce();
+
     // LED Off
     digitalWrite(ACT_LED, LOW);
 
@@ -112,44 +115,59 @@ void setup() {
 
 }
 
+// Timer counter
+int counter = 0;
+
 /**
  * @brief Perodic updates and blinking/honking
  * 
  */
 
 void loop() {
-    digitalWrite(ACT_LED, HIGH);
-
     if (honk_act) {
        delay(200);
        openRelay(horn_id);
 
     }
 
-    if (blink_right) { closeRelay(right_tail_id); }
-    if (blink_left) { closeRelay(left_tail_id); }
-    if (blink_head) { closeRelay(head_light_id); }
-    if (blink_tail) { closeRelay(tail_light_id); }
+    if (blink_right || blink_left || blink_head || blink_tail) {
+        digitalWrite(ACT_LED, HIGH);
 
-    digitalWrite(ACT_LED, LOW);
+        if (blink_right) { closeRelay(right_tail_id); }
+        if (blink_left) { closeRelay(left_tail_id); }
+        if (blink_head) { closeRelay(head_light_id); }
+        if (blink_tail) { closeRelay(tail_light_id); }
 
-    delay(2000);
+        digitalWrite(ACT_LED, LOW);
 
-    digitalWrite(ACT_LED, HIGH);
+        delay(2000);
 
-    if (blink_right) { openRelay(right_tail_id); }
-    if (blink_left) { openRelay(left_tail_id); }
-    if (blink_head) { openRelay(head_light_id); }
-    if (blink_tail) { openRelay(tail_light_id); }
+        digitalWrite(ACT_LED, HIGH);
 
-    digitalWrite(ACT_LED, LOW);
+        if (blink_right) { openRelay(right_tail_id); }
+        if (blink_left) { openRelay(left_tail_id); }
+        if (blink_head) { openRelay(head_light_id); }
+        if (blink_tail) { openRelay(tail_light_id); }
 
-    delay(2000);
+        delay(2000);
 
-    digitalWrite(ACT_LED, HIGH);
-    postRelays();
-    digitalWrite(ACT_LED, LOW);
-    
+        digitalWrite(ACT_LED, LOW);
+
+        counter += 4;
+
+    } else {
+        delay(1000);
+        counter++;
+
+    }
+
+    if (counter >= 10) {
+        digitalWrite(ACT_LED, HIGH);
+        postRelays();
+        counter = 0;
+        digitalWrite(ACT_LED, LOW);
+
+    }
 }
 
 /**
@@ -217,6 +235,37 @@ void can_irq() {
         digitalWrite(COM_LED, LOW);
 
     }
+}
+
+/**
+ * @brief Get the wiper pos
+ * 
+ */
+
+void announce() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 1;
+    can_msg_out.data[1] = 2;
+    can_msg_out.data[2] = 3;
+    can_msg_out.data[3] = 4;
+    can_msg_out.data[4] = 5;
+    can_msg_out.data[5] = 6;
+    can_msg_out.data[6] = 7;
+    can_msg_out.data[7] = 8;
+
+    for (int i = 0; i < 5; i++) {
+        can.sendMessage(&can_msg_out);
+        delay(100);
+
+    }
+    
+    digitalWrite(COM_LED, LOW);
+    
 }
 
 // --------- Pedals 
@@ -333,9 +382,6 @@ void closeRelay(uint8_t id) {
             break;
 
     }
-
-    postRelayStatus(id);
-
 }
 
 /**
@@ -374,9 +420,6 @@ void openRelay(uint8_t id) {
             break;
 
     }
-
-    postRelayStatus(id);
-
 }
 
 /**
