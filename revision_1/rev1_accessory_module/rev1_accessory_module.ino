@@ -22,6 +22,7 @@
 #define REAR_BUZZ_RELAY 4
 #define HORN_RELAY 9
 
+// Releay ACT
 #define RELAY_ACT LOW
 #define RELAY_DEACT HIGH
 
@@ -36,24 +37,27 @@
 // Brake Pedal
 #define BRAKE_PEDAL 3
 
-#define CAN_CS 10
-#define CAN_INT 2
-
-#define CAN_ID 0x002
-#define CAN_DLC 8
-
+// LEDS
 #define COM_LED A0
 #define ACT_LED A1
 
+// CAN Pins
+#define CAN_CS 10
+#define CAN_INT 2
+
+// CAN Message
+#define CAN_ID 0x002
+#define CAN_DLC 8
+
+// CAN
 MCP2515 can(CAN_CS);
 
-bool blink_right = false;
-bool blink_left = false;
-bool blink_head = false;
-bool blink_tail = false;
-bool honk_act = false;
-
-// --------- Arduino
+// Blink statuses
+volatile bool blink_right = false;
+volatile bool blink_left = false;
+volatile bool blink_head = false;
+volatile bool blink_tail = false;
+volatile bool honk_act = false;
 
 /**
  * @brief Main setup
@@ -61,14 +65,25 @@ bool honk_act = false;
  */
 
 void setup() {
+    // Setup LEDS
     pinMode(ACT_LED, OUTPUT);
+    pinMode(COM_LED, OUTPUT);
+
+    // Init Hold and Display
+    digitalWrite(ACT_LED, HIGH);
+    digitalWrite(COM_LED, HIGH);
+    delay(1000);
+    digitalWrite(ACT_LED, HIGH);
+    digitalWrite(COM_LED, LOW);
+    delay(200);
+
+    // Setup
     digitalWrite(ACT_LED, HIGH);
 
+    // Setup CAN
     can.reset();
     can.setBitrate(CAN_125KBPS);
     can.setNormalMode();
-
-    pinMode(COM_LED, OUTPUT);
 
     // Relay setup
     pinMode(RIGHT_TAIL_RELAY, OUTPUT);
@@ -78,17 +93,27 @@ void setup() {
     pinMode(REAR_BUZZ_RELAY, OUTPUT);
     pinMode(HORN_RELAY, OUTPUT);
 
-    digitalWrite(ACT_LED, LOW);
-
+    // Reset relays
     resetRelays();
 
+    // Flash head and tail lights
+    closeRelay(tail_light_id);
+    closeRelay(head_light_id);
+    delay(500);
+    openRelay(tail_light_id);
+    openRelay(head_light_id);
+
+    // LED Off
+    digitalWrite(ACT_LED, LOW);
+
+    // Interrupts
     attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
     attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
 
 }
 
 /**
- * @brief Main loop
+ * @brief Perodic updates and blinking/honking
  * 
  */
 
@@ -133,12 +158,16 @@ void loop() {
  */
 
 void can_irq() {
+    // Message buffer
     struct can_frame can_msg_in;
 
+    // Check message
     if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
         digitalWrite(COM_LED, HIGH);
 
+        // Check ID
         if (can_msg_in.can_id == CAN_ID) {
+
             if (can_msg_in.data[0] == 0x0A) {
                 if (can_msg_in.data[2] == 0x01) {
                     closeRelay(can_msg_in.data[1]);
@@ -174,12 +203,36 @@ void can_irq() {
             }
         }
 
+        clearMessageBuffer()
+
         digitalWrite(COM_LED, LOW);
 
     }
 }
 
+/**
+ * @brief Clear the message buffer
+ * 
+ */
+
+void clearMessageBuffer() {
+    can_msg_out.data[0] = 0;
+    can_msg_out.data[1] = 0;
+    can_msg_out.data[2] = 0;
+    can_msg_out.data[3] = 0;
+    can_msg_out.data[4] = 0;
+    can_msg_out.data[5] = 0;
+    can_msg_out.data[6] = 0;
+    can_msg_out.data[7] = 0;
+
+}
+
 // --------- Pedals 
+
+/**
+ * @brief Pedal is pressed
+ * 
+ */
 
 void pedal_act() {
     noInterrupts();
@@ -206,6 +259,11 @@ void pedal_act() {
     digitalWrite(COM_LED, LOW);
 
 }
+
+/**
+ * @brief Pedal is released
+ * 
+ */
 
 void pedal_deact() {
     noInterrupts();
