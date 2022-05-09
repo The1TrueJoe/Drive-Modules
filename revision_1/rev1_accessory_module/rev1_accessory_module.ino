@@ -111,7 +111,6 @@ void setup() {
 
     // Interrupts
     attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
 
 }
 
@@ -124,50 +123,55 @@ int counter = 0;
  */
 
 void loop() {
-    if (honk_act) {
+    if (digitalRead(BRAKE_PEDAL) == HIGH) {
+        digitalWrite(ACT_LED, HIGH);
+        pedal_act();
+
+        while (digitalRead(BRAKE_PEDAL) == HIGH) { 
+            delay(100);
+            counter++;
+        
+        } 
+
+        pedal_deact();
+        counter /= 10;
+        digitalWrite(ACT_LED, LOW);
+
+    }
+
+    if (honk_act ) {
        delay(200);
        openRelay(horn_id);
 
     }
 
-    if (blink_right || blink_left || blink_head || blink_tail) {
-        digitalWrite(ACT_LED, HIGH);
+    if (blink_right || blink_left || blink_head || blink_tail || honk_act) {
+        if (counter >= 20) {
+            digitalWrite(ACT_LED, HIGH);
 
-        if (blink_right) { closeRelay(right_tail_id); }
-        if (blink_left) { closeRelay(left_tail_id); }
-        if (blink_head) { closeRelay(head_light_id); }
-        if (blink_tail) { closeRelay(tail_light_id); }
+            if (blink_right) { toggleRelay(right_tail_id); }
+            if (blink_left) { toggleRelay(left_tail_id); }
+            if (blink_head) { toggleRelay(head_light_id); }
+            if (blink_tail) { toggleRelay(tail_light_id); }
 
-        digitalWrite(ACT_LED, LOW);
+            counter = 0;
 
-        delay(2000);
+            digitalWrite(ACT_LED, LOW);
 
-        digitalWrite(ACT_LED, HIGH);
-
-        if (blink_right) { openRelay(right_tail_id); }
-        if (blink_left) { openRelay(left_tail_id); }
-        if (blink_head) { openRelay(head_light_id); }
-        if (blink_tail) { openRelay(tail_light_id); }
-
-        delay(2000);
-
-        digitalWrite(ACT_LED, LOW);
-
-        counter += 4;
-
-    } else {
-        delay(1000);
-        counter++;
-
+        }
     }
 
-    if (counter >= 10) {
+    if (counter >= 100) {
         digitalWrite(ACT_LED, HIGH);
         postRelays();
         counter = 0;
         digitalWrite(ACT_LED, LOW);
 
     }
+
+    delay(100);
+    counter++;
+
 }
 
 /**
@@ -209,10 +213,32 @@ void can_irq() {
                 
             } else if (can_msg_in.data[0] == 0x0B) {
                 if (can_msg_in.data[1] == 0x01) {
-                    openRelay(horn_id);
+                    closeRelay(horn_id);
                     honk_act = true;
+
+                } else if (can_msg_in.data[1] == 0x0B) {
+                    if (blink_right && can_msg_in.data[2] == right_tail_id) {
+                        closeRelay(right_tail_id);
+                        blink_right = true;
+
+                    } else if (blink_left && can_msg_in.data[2] == left_tail_id) {
+                        closeRelay(left_tail_id);
+                        blink_left = true;
+
+                    } else if (blink_head && can_msg_in.data[2] == head_light_id) {
+                        closeRelay(head_light_id);
+                        blink_head = true;
+
+                    } else if (blink_tail && can_msg_in.data[2] == tail_light_id) {
+                        closeRelay(tail_light_id);
+                        blink_tail = true;
+
+                    } else if (honk_act && can_msg_in.data[2] == horn_id) {
+                        closeRelay(horn_id);
+                        honk_act = true;
+
+                    }
                 }
-                
 
             } else if (can_msg_in.data[0] == 0x0C) {
                 if (can_msg_in.data[1] == 0x0A) {
@@ -276,8 +302,6 @@ void announce() {
  */
 
 void pedal_act() {
-    noInterrupts();
-
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
@@ -294,8 +318,6 @@ void pedal_act() {
     can_msg_out.data[7] = 0x02;
 
     can.sendMessage(&can_msg_out);
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_deact, FALLING);
 
     digitalWrite(COM_LED, LOW);
 
@@ -307,8 +329,6 @@ void pedal_act() {
  */
 
 void pedal_deact() {
-    noInterrupts();
-
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
@@ -326,9 +346,6 @@ void pedal_deact() {
 
     can.sendMessage(&can_msg_out);
 
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(BRAKE_PEDAL), pedal_act, RISING);
-
     digitalWrite(COM_LED, LOW);
 
 }
@@ -344,6 +361,22 @@ void resetRelays() {
     closeRelay(horn_id);
     closeRelay(rear_buzz_id);
 
+}
+
+/**
+ * @brief Toggle the relay
+ * 
+ * @param id relay id
+ */
+
+void toggleRelay(uint8_t id) { 
+    if (checkRelay(id)) {
+        openRelay(id);
+
+    } else {
+        closeRelay(id);
+
+    }
 }
 
 /**

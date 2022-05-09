@@ -93,6 +93,7 @@ void setup() {
 
     // Pedal
     pinMode(PEDAL_POT, INPUT);
+    pinMode(PEDAL_SW, INPUT);
 
     // Digital Accel
     accel = new MCP4XXX(ACCEL_CS);
@@ -109,7 +110,6 @@ void setup() {
 
     // Interrupts
     attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
 
 }
 
@@ -122,23 +122,29 @@ int counter = 0;
  */
 
 void loop() {
-    while (pedal_pressed) { 
+    if (digitalRead(PEDAL_SW) == HIGH) {
         digitalWrite(ACT_LED, HIGH);
-        
-        get_pedal_pos(); 
-        if (counter % 5 == 0) { get_wiper_pos(); }
+        pedal_act();
 
+        while (digitalRead(PEDAL_SW) == HIGH) { 
+            get_pedal_pos(); 
+            
+            if (counter % 5 == 0) { get_wiper_pos(); }
+
+            delay(100);
+            counter++;
+        
+        } 
+
+        pedal_deact();
         digitalWrite(ACT_LED, LOW);
 
-        delay(100);
-        counter++;
-        
-    } 
+    }
     
-    if (counter % 5 == 0) { 
+    if (counter % 50 == 0) { 
         get_wiper_pos();   
 
-        if (counter >= 10 == 0) {
+        if (counter >= 100 == 0) {
             digitalWrite(ACT_LED, HIGH);
 
             get_direc(); 
@@ -151,7 +157,7 @@ void loop() {
         }
     }
 
-    delay(1000);
+    delay(100);
     counter++;
 
 }
@@ -411,11 +417,7 @@ void get_direc() {
  */
 
 void pedal_act() {
-    noInterrupts();
-
     digitalWrite(COM_LED, HIGH);
-
-    pedal_pressed = true;
 
     struct can_frame can_msg_out;
 
@@ -431,8 +433,6 @@ void pedal_act() {
     can_msg_out.data[7] = 0x02;
 
     can.sendMessage(&can_msg_out);
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
 
     digitalWrite(COM_LED, LOW);
 
@@ -444,11 +444,7 @@ void pedal_act() {
  */
 
 void pedal_deact() {
-    noInterrupts();
-
     digitalWrite(COM_LED, HIGH);
-
-    pedal_pressed = false;
 
     struct can_frame can_msg_out;
 
@@ -464,8 +460,6 @@ void pedal_deact() {
     can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
 
     digitalWrite(COM_LED, LOW);
 
