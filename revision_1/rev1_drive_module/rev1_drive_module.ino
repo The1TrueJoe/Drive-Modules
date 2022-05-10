@@ -37,6 +37,7 @@
 // LEDs
 #define COM_LED A0
 #define ACT_LED A1
+#define PEDAL_LED A2
 
 // CAN Pins
 #define CAN_CS 10
@@ -66,6 +67,7 @@ void setup() {
     // Setup LEDS
     pinMode(ACT_LED, OUTPUT);
     pinMode(COM_LED, OUTPUT);
+    pinMode(PEDAL_LED, OUTPUT);
 
     // Init Hold and Display
     digitalWrite(ACT_LED, HIGH);
@@ -417,6 +419,7 @@ void get_direc() {
  */
 
 void pedal_act() {
+    digitalWrite(PEDAL_LED, HIGH);
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
@@ -444,6 +447,7 @@ void pedal_act() {
  */
 
 void pedal_deact() {
+    digitalWrite(PEDAL_LED, LOW);
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
