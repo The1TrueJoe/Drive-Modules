@@ -50,7 +50,7 @@
 
 // Digital Potentiometer
 using namespace icecave::arduino;
-MCP4XXX* accel;
+volatile MCP4XXX* accel;
 volatile int wiper_pos = 0;
 
 // CAN
@@ -224,9 +224,9 @@ void can_irq() {
         } else if (can_msg_in.data[0] == 0x0B) {
             if (can_msg_in.data[1] == 0x0A) {
                 if (can_msg_in.data[2] == 0x01) 
-                    pot_inc();
+                    accel -> increment();
                 else if (can_msg_in.data[2] == 0x02) 
-                    pot_dec();
+                    accel -> decrement();
                 else
                     get_wiper_pos();
 
@@ -307,9 +307,11 @@ void pot_write(int pos) {
 
     while (pos != wiper_pos) {
         if (pos > wiper_pos)
-            pot_inc();
+            accel -> increment();
+            wiper_pos++;
         else if (pos < wiper_pos)
-            pot_dec();
+            accel -> decrement();
+            wiper_pos--;
     }
 
     get_wiper_pos();
@@ -323,15 +325,13 @@ void pot_write(int pos) {
 
 void pot_zero() {
     for (int i = 0; i < 260; i++) {
-        pot_dec();
+        accel -> decrement();
 
     }
+    
+    wiper_pos = 0;
+    
 }
-
-/** @brief Increment Potentiometer */
-void pot_inc() { accel -> increment(); wiper_pos++; }
-/** @brief Decrement Potentiometer */
-void pot_dec() { accel -> decrement(); wiper_pos--; }
 
 /**
  * @brief Get the wiper pos
