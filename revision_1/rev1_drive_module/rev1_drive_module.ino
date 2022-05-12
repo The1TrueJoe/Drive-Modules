@@ -306,12 +306,15 @@ void pot_write(int pos) {
         pos = 255;
 
     while (pos != wiper_pos) {
-        if (pos > wiper_pos)
+        if (pos > wiper_pos) {
             accel -> increment();
             wiper_pos++;
-        else if (pos < wiper_pos)
+            
+        } else if (pos < wiper_pos) {
             accel -> decrement();
             wiper_pos--;
+            
+        }
     }
 
     get_wiper_pos();
