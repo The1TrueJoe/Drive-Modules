@@ -220,31 +220,31 @@ void can_irq() {
 
                 }
 
-            }
-        } else if (can_msg_in.data[0] == 0x0B) {
-            if (can_msg_in.data[1] == 0x0A) {
-                if (can_msg_in.data[2] == 0x01) 
-                    accel -> increment();
-                else if (can_msg_in.data[2] == 0x02) 
-                    accel -> decrement();
-                else
-                    get_wiper_pos();
+            } else if (can_msg_in.data[0] == 0x0B) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x01) 
+                        accel -> increment();
+                    else if (can_msg_in.data[2] == 0x02) 
+                        accel -> decrement();
+                    else
+                        get_wiper_pos();
 
-            }
+                }
 
-        } else if (can_msg_in.data[0] == 0x0C) {
-            if (can_msg_in.data[1] == 0x0A) {
-                if (can_msg_in.data[2] == 0x0A) 
-                    get_wiper_pos();
-                else if (can_msg_in.data[2] == 0x0D) 
-                    get_pedal_pos();
-                else if (can_msg_in.data[2] == 0x0E)
-                    get_en_status();
-                
+            } else if (can_msg_in.data[0] == 0x0C) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x0A) 
+                        get_wiper_pos();
+                    else if (can_msg_in.data[2] == 0x0D) 
+                        get_pedal_pos();
+                    else if (can_msg_in.data[2] == 0x0E)
+                        get_en_status();
 
-            } else if (can_msg_in.data[1] == 0x0D) {
-                get_direc();
 
+                } else if (can_msg_in.data[1] == 0x0D) {
+                    get_direc();
+
+                }
             }
         }
 
