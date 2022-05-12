@@ -29,6 +29,7 @@
 // Pedal
 #define PEDAL_POT A3
 #define PEDAL_SW 3
+#define PEDAL_EN_HEADER 8
 
 // Releay ACT
 #define RELAY_ACT HIGH
@@ -57,6 +58,7 @@ MCP2515 can(CAN_CS);
 
 // Pedal status
 volatile bool pedal_pressed = false;
+volatile bool pedal_detect_enable = false;
 
 /**
  * @brief Main setup
@@ -94,15 +96,25 @@ void setup() {
     digitalWrite(FWD_REV_SEL, RELAY_DEACT);
 
     // Pedal
-    pinMode(PEDAL_POT, INPUT);
-    pinMode(PEDAL_SW, INPUT);
+    pinMode(PEDAL_EN_HEADER, INPUT);
+    pedal_detect_enable = digitalRead(PEDAL_EN_HEADER) == HIGH;
+
+    if (pedal_detect_enable) {
+        pinMode(PEDAL_POT, INPUT);
+        pinMode(PEDAL_SW, INPUT);
+
+        for (int i = 0; i < 4; i++) {
+            digitalWrite(PEDAL_LED, HIGH);
+            delay(200);
+            digitalWrite(PEDAL_LED, LOW);
+            delay(200);
+
+        }
+    }
 
     // Digital Accel
     accel = new MCP4XXX(ACCEL_CS);
-
-    // Zero pot
-    pot_write(0);
-    get_wiper_pos();
+    pot_zero();
 
     // Announce ready to CAN bus
     announce();
@@ -124,29 +136,31 @@ int counter = 0;
  */
 
 void loop() {
-    if (digitalRead(PEDAL_SW) == HIGH) {
-        digitalWrite(ACT_LED, HIGH);
-        pedal_act();
+    if (pedal_detect_enable) {
+        if (digitalRead(PEDAL_SW) == HIGH) {
+            digitalWrite(ACT_LED, HIGH);
+            pedal_act();
 
-        while (digitalRead(PEDAL_SW) == HIGH) { 
-            get_pedal_pos(); 
+            while (digitalRead(PEDAL_SW) == HIGH) { 
+                get_pedal_pos(); 
+                
+                if (counter % 5 == 0) { get_wiper_pos(); }
+
+                delay(400);
+                counter++;
             
-            if (counter % 5 == 0) { get_wiper_pos(); }
+            } 
 
-            delay(100);
-            counter++;
-        
-        } 
+            pedal_deact();
+            digitalWrite(ACT_LED, LOW);
 
-        pedal_deact();
-        digitalWrite(ACT_LED, LOW);
-
+        }
     }
     
-    if (counter % 50 == 0) { 
+    if (counter % 100 == 0) { 
         get_wiper_pos();   
 
-        if (counter >= 100 == 0) {
+        if (counter >= 200 == 0) {
             digitalWrite(ACT_LED, HIGH);
 
             get_direc(); 
@@ -300,6 +314,18 @@ void pot_write(int pos) {
 
     get_wiper_pos();
 
+}
+
+/**
+ * @brief Zero the potentiometer
+ * 
+ */
+
+void pot_zero() {
+    for (int i = 0; i < 260; i++) {
+        pot_dec();
+
+    }
 }
 
 /** @brief Increment Potentiometer */
