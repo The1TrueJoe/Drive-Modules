@@ -50,7 +50,7 @@
 
 // Digital Potentiometer
 using namespace icecave::arduino;
-volatile MCP4XXX* accel;
+MCP4XXX* accel;
 volatile int wiper_pos = 0;
 
 // CAN
