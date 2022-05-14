@@ -212,7 +212,7 @@ void can_irq() {
             } else if (can_msg_in.data[0] == 0x0B) {
                 if (can_msg_in.data[1] == 0x01) 
                     steer_to_pos(can_msg_in.data[2] | (can_msg_in.data[3] << 8), can_msg_in.data[3] != 0 ? 255 : can_msg_in.data[4]);
-
+              
             } else if (can_msg_in.data[0] == 0x0C) {
                 if (can_msg_in.data[1] == 0x01) {
                     if (can_msg_in.data[2] == 0x0A)
@@ -342,7 +342,6 @@ void read_brk_state() {
 
 void steer_to_pos(int pos, int power) {
     if (digitalRead(STR_ENABLE) != 1) { return; }
-
     int current_pos = read_str_pot();
 
     while (abs(current_pos - pos) > STEER_TOL) {
@@ -367,7 +366,7 @@ void steer_to_pos(int pos, int power) {
  * 
  */
 
-int read_str_pot() {
+void read_str_pot() {
     digitalWrite(COM_LED, HIGH);
 
     int pot_value = analogRead(STR_POT);
