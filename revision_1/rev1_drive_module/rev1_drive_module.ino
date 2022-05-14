@@ -370,7 +370,7 @@ void get_wiper_pos() {
 void get_pedal_pos() {
     digitalWrite(COM_LED, HIGH);
 
-    int pedal_pos = analogRead(PEDAL_POT);
+    int pedal_pos = map(analogRead(PEDAL_POT), 0, 1023, 0, 255);
 
     struct can_frame can_msg_out;
 
