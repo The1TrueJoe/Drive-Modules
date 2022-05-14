@@ -19,86 +19,181 @@
 #include "mcp2515.h"
 #include "mcp4xxx.h"
 
+// Accelerator CS
 #define ACCEL_CS 9
+
+// Solenoid control
 #define ACT_SW 4
 #define FWD_REV_SEL 5
+
+// Pedal
 #define PEDAL_POT A3
 #define PEDAL_SW 3
+#define PEDAL_EN_HEADER 8
 
+// Releay ACT
+#define RELAY_ACT HIGH
+#define RELAY_DEACT LOW
+
+// LEDs
+#define COM_LED A0
+#define ACT_LED A1
+#define PEDAL_LED A2
+
+// CAN Pins
 #define CAN_CS 10
 #define CAN_INT 2
 
+// CAN Messages
 #define CAN_ID 0x003
 #define CAN_DLC 8
 
-#define COM_LED A0
-#define ACT_LED A1
-
+// Digital Potentiometer
 using namespace icecave::arduino;
-
 MCP4XXX* accel;
+volatile int wiper_pos = 0;
+
+// CAN
 MCP2515 can(CAN_CS);
 
-volatile int wiper_pos = 0;
+// Pedal status
 volatile bool pedal_pressed = false;
+volatile bool pedal_detect_enable = false;
+
+/**
+ * @brief Main setup
+ * 
+ */
 
 void setup() {
+    // Setup LEDS
     pinMode(ACT_LED, OUTPUT);
+    pinMode(COM_LED, OUTPUT);
+    pinMode(PEDAL_LED, OUTPUT);
+
+    // Init Hold and Display
+    digitalWrite(ACT_LED, HIGH);
+    digitalWrite(COM_LED, HIGH);
+    delay(1000);
+    digitalWrite(ACT_LED, HIGH);
+    digitalWrite(COM_LED, LOW);
+    delay(200);
+
+    // Setup
     digitalWrite(ACT_LED, HIGH);
 
+    // Setup CAN
     can.reset();
     can.setBitrate(CAN_125KBPS);
     can.setNormalMode();
 
+    // Switches
     pinMode(ACT_SW, OUTPUT);
     pinMode(FWD_REV_SEL, OUTPUT);
 
-    pinMode(PEDAL_POT, INPUT);
+    // Reset
+    digitalWrite(ACT_SW, RELAY_DEACT);
+    digitalWrite(FWD_REV_SEL, RELAY_DEACT);
 
-    pinMode(COM_LED, OUTPUT);
+    // Pedal
+    pinMode(PEDAL_EN_HEADER, INPUT);
+    pedal_detect_enable = digitalRead(PEDAL_EN_HEADER) == HIGH;
 
+    if (pedal_detect_enable) {
+        pinMode(PEDAL_POT, INPUT);
+        pinMode(PEDAL_SW, INPUT_PULLUP);
+
+        for (int i = 0; i < 4; i++) {
+            digitalWrite(PEDAL_LED, HIGH);
+            delay(200);
+            digitalWrite(PEDAL_LED, LOW);
+            delay(200);
+
+        }
+    }
+
+    // Digital Accel
     accel = new MCP4XXX(ACCEL_CS);
+    pot_zero();
 
-    pot_write(0);
-    get_wiper_pos();
+    // Announce ready to CAN bus
+    announce();
 
+    // LED Low
     digitalWrite(ACT_LED, LOW);
 
+    // Interrupts
     attachInterrupt(digitalPinToInterrupt(CAN_INT), can_irq, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
 
 }
 
+// Timer counter
 int counter = 0;
 
+/**
+ * @brief Peroidic update loop
+ * 
+ */
+
 void loop() {
-    digitalWrite(ACT_LED, HIGH);
+    if (pedal_detect_enable) {
+        if (digitalRead(PEDAL_SW) == LOW) {
+            digitalWrite(ACT_LED, HIGH);
+            pedal_act();
 
-    if (counter % 10 == 0) { get_direc(); get_en_status(); } 
-    if (counter % 2 == 0) { get_wiper_pos(); }
+            while (digitalRead(PEDAL_SW) == LOW) { 
+                get_pedal_pos(); 
+                
+                if (counter % 5 == 0) { get_wiper_pos(); }
 
-    if (pedal_pressed) { 
-        get_pedal_pos(); 
-        digitalWrite(ACT_LED, LOW);
+                delay(400);
+                counter++;
+            
+            } 
 
-        delay(10);
-        
-    } else {
-        digitalWrite(ACT_LED, LOW);
+            pedal_deact();
+            digitalWrite(ACT_LED, LOW);
 
-        counter++;
-        delay(1000);
-
+        }
     }
+    
+    if (counter % 100 == 0) { 
+        get_wiper_pos();   
+
+        if (counter >= 200 == 0) {
+            digitalWrite(ACT_LED, HIGH);
+
+            get_direc(); 
+            get_en_status(); 
+
+            counter = 0;
+
+            digitalWrite(ACT_LED, LOW);
+
+        }
+    }
+
+    delay(100);
+    counter++;
+
 }
 
+/**
+ * @brief CAN Message Processing
+ * 
+ */
+
 void can_irq() {
+    // Message
     struct can_frame can_msg_in;
 
+    // Check message
     if (can.readMessage(&can_msg_in) == MCP2515::ERROR_OK) {
         digitalWrite(ACT_LED, HIGH);
 
+        // Check ID
         if (can_msg_in.can_id == CAN_ID) {
+
             if (can_msg_in.data[0] == 0x0A) {
                 if (can_msg_in.data[1] == 0x0A) {
                     if (can_msg_in.data[2] == 0x0A) {
@@ -110,8 +205,8 @@ void can_irq() {
                             digitalWrite(ACT_SW, LOW);
                         else if (can_msg_in.data[3] == 0x02) 
                             digitalWrite(ACT_SW, HIGH);
-
-                        get_en_status();
+                        else
+                            get_en_status();
 
                     }
 
@@ -120,57 +215,131 @@ void can_irq() {
                         digitalWrite(FWD_REV_SEL, LOW);
                     else if (can_msg_in.data[2] == 0x02) 
                         digitalWrite(FWD_REV_SEL, HIGH);
-
-                    get_direc();
+                    else
+                        get_direc();
 
                 }
 
-            }
-        } else if (can_msg_in.data[0] == 0x0B) {
-            if (can_msg_in.data[1] == 0x0A) {
-                if (can_msg_in.data[2] == 0x01) 
-                    pot_inc();
-                else if (can_msg_in.data[2] == 0x02) 
-                    pot_dec();
+            } else if (can_msg_in.data[0] == 0x0B) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x01) 
+                        accel -> increment();
+                    else if (can_msg_in.data[2] == 0x02) 
+                        accel -> decrement();
+                    else
+                        get_wiper_pos();
 
-                get_wiper_pos();
+                }
 
-            }
+            } else if (can_msg_in.data[0] == 0x0C) {
+                if (can_msg_in.data[1] == 0x0A) {
+                    if (can_msg_in.data[2] == 0x0A) 
+                        get_wiper_pos();
+                    else if (can_msg_in.data[2] == 0x0D) 
+                        get_pedal_pos();
+                    else if (can_msg_in.data[2] == 0x0E)
+                        get_en_status();
 
-        } else if (can_msg_in.data[0] == 0x0C) {
-            if (can_msg_in.data[1] == 0x0A) {
-                if (can_msg_in.data[2] == 0x0A) 
-                    get_wiper_pos();
-                else if (can_msg_in.data[2] == 0x0D) 
-                    get_pedal_pos();
-                else if (can_msg_in.data[2] == 0x0E)
-                    get_en_status();
-                
 
-            } else if (can_msg_in.data[1] == 0x0D) {
-                get_direc();
+                } else if (can_msg_in.data[1] == 0x0D) {
+                    get_direc();
 
+                }
             }
         }
+
+        // Clear the message buffer
+        can_msg_in.data[0] = 0;
+        can_msg_in.data[1] = 0;
+        can_msg_in.data[2] = 0;
+        can_msg_in.data[3] = 0;
+        can_msg_in.data[4] = 0;
+        can_msg_in.data[5] = 0;
+        can_msg_in.data[6] = 0;
+        can_msg_in.data[7] = 0;
 
         digitalWrite(ACT_LED, LOW);
     }
 }
 
+/**
+ * @brief Get the wiper pos
+ * 
+ */
+
+void announce() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 1;
+    can_msg_out.data[1] = 2;
+    can_msg_out.data[2] = 3;
+    can_msg_out.data[3] = 4;
+    can_msg_out.data[4] = 5;
+    can_msg_out.data[5] = 6;
+    can_msg_out.data[6] = 7;
+    can_msg_out.data[7] = 8;
+
+    for (int i = 0; i < 5; i++) {
+        can.sendMessage(&can_msg_out);
+        delay(100);
+
+    }
+    
+    digitalWrite(COM_LED, LOW);
+    
+}
+
+/**
+ * @brief Write to the potentiometer
+ * 
+ * @param pos Positon (0-255)
+ */
+
 void pot_write(int pos) {
+    if (pos < 0) 
+        pos = 0;
+    else if (pos > 255)
+        pos = 255;
+
     while (pos != wiper_pos) {
-        if (pos > wiper_pos)
-            pot_inc();
-        else if (pos < wiper_pos)
-            pot_dec();
+        if (pos > wiper_pos) {
+            accel -> increment();
+            wiper_pos++;
+            
+        } else if (pos < wiper_pos) {
+            accel -> decrement();
+            wiper_pos--;
+            
+        }
     }
 
     get_wiper_pos();
 
 }
 
-void pot_inc() { accel -> increment(); wiper_pos++; }
-void pot_dec() { accel -> decrement(); wiper_pos--; }
+/**
+ * @brief Zero the potentiometer
+ * 
+ */
+
+void pot_zero() {
+    for (int i = 0; i < 260; i++) {
+        accel -> decrement();
+
+    }
+    
+    wiper_pos = 0;
+    
+}
+
+/**
+ * @brief Get the wiper pos
+ * 
+ */
 
 void get_wiper_pos() {
     digitalWrite(COM_LED, HIGH);
@@ -192,6 +361,11 @@ void get_wiper_pos() {
     digitalWrite(COM_LED, LOW);
     
 }
+
+/**
+ * @brief Get the pedal pos
+ * 
+ */
 
 void get_pedal_pos() {
     digitalWrite(COM_LED, HIGH);
@@ -216,6 +390,11 @@ void get_pedal_pos() {
     
 }
 
+/**
+ * @brief Get the enable status
+ * 
+ */
+
 void get_en_status() {
     digitalWrite(COM_LED, HIGH);
 
@@ -236,6 +415,11 @@ void get_en_status() {
     digitalWrite(COM_LED, LOW);
 
 }
+
+/**
+ * @brief Get the direction
+ * 
+ */
 
 void get_direc() {
     digitalWrite(COM_LED, HIGH);
@@ -258,12 +442,14 @@ void get_direc() {
 
 }
 
+/**
+ * @brief Pedal pressed
+ * 
+ */
+
 void pedal_act() {
-    noInterrupts();
-
+    digitalWrite(PEDAL_LED, HIGH);
     digitalWrite(COM_LED, HIGH);
-
-    pedal_pressed = true;
 
     struct can_frame can_msg_out;
 
@@ -279,19 +465,19 @@ void pedal_act() {
     can_msg_out.data[7] = 0x02;
 
     can.sendMessage(&can_msg_out);
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_deact, FALLING);
 
     digitalWrite(COM_LED, LOW);
 
 }
 
+/**
+ * @brief Pedal released
+ * 
+ */
+
 void pedal_deact() {
-    noInterrupts();
-
+    digitalWrite(PEDAL_LED, LOW);
     digitalWrite(COM_LED, HIGH);
-
-    pedal_pressed = false;
 
     struct can_frame can_msg_out;
 
@@ -307,8 +493,6 @@ void pedal_deact() {
     can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
-    interrupts();
-    attachInterrupt(digitalPinToInterrupt(PEDAL_SW), pedal_act, RISING);
 
     digitalWrite(COM_LED, LOW);
 
