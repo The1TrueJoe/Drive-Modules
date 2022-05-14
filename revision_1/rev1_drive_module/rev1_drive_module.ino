@@ -101,7 +101,7 @@ void setup() {
 
     if (pedal_detect_enable) {
         pinMode(PEDAL_POT, INPUT);
-        pinMode(PEDAL_SW, INPUT);
+        pinMode(PEDAL_SW, INPUT_PULLUP);
 
         for (int i = 0; i < 4; i++) {
             digitalWrite(PEDAL_LED, HIGH);
@@ -137,11 +137,11 @@ int counter = 0;
 
 void loop() {
     if (pedal_detect_enable) {
-        if (digitalRead(PEDAL_SW) == HIGH) {
+        if (digitalRead(PEDAL_SW) == LOW) {
             digitalWrite(ACT_LED, HIGH);
             pedal_act();
 
-            while (digitalRead(PEDAL_SW) == HIGH) { 
+            while (digitalRead(PEDAL_SW) == LOW) { 
                 get_pedal_pos(); 
                 
                 if (counter % 5 == 0) { get_wiper_pos(); }
