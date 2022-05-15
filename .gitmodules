@@ -1,18 +1,18 @@
-[submodule "revision_1/rev1_drive_module/arduino-mcp4xxx"]
-	path = revision_1/rev1_drive_module/arduino-mcp4xxx
+[submodule "revision_1/libs/arduino-mcp4xxx"]
+	path = revision_1/libs/arduino-mcp4xxx
 	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp4xxx
-[submodule "revision_1/rev1_drive_module/arduino-mcp2515"]
-	path = revision_1/rev1_drive_module/arduino-mcp2515
+[submodule "revision_1/libs/arduino-mcp2515"]
+	path = revision_1/libs/arduino-mcp2515
 	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
-[submodule "revision_1/rev1_accessory_module/arduino-mcp2515"]
-	path = revision_1/rev1_accessory_module/arduino-mcp2515
-	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
-[submodule "revision_1/rev1_direction_module/arduino-mcp2515"]
-	path = revision_1/rev1_direction_module/arduino-mcp2515
-	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp2515
-[submodule "revision_1/rev1_direction_module/arduino-Encoder"]
-	path = revision_1/rev1_direction_module/arduino-Encoder
+[submodule "revision_1/libs/arduino-Encoder"]
+	path = revision_1/libs/arduino-Encoder
 	url = https://github.com/GSSM-AutoGolfCart/arduino-Encoder
-[submodule "revision_1/tests/drive_mod_test/arduino-mcp4xxx"]
-	path = revision_1/tests/drive_mod_test/arduino-mcp4xxx
-	url = https://github.com/GSSM-AutoGolfCart/arduino-mcp4xxx
+[submodule "revision_1/libs/Arduino-MPU6050"]
+	path = revision_1/libs/Arduino-MPU6050
+	url = https://github.com/GSSM-AutoGolfCart/Arduino-MPU6050
+[submodule "revision_1/libs/ArduinoCore-avr"]
+	path = revision_1/libs/ArduinoCore-avr
+	url = https://github.com/GSSM-AutoGolfCart/ArduinoCore-avr
+[submodule "revision_1/libs/avr-libc"]
+	path = revision_1/libs/avr-libc
+	url = https://github.com/GSSM-AutoGolfCart/avr-libc
