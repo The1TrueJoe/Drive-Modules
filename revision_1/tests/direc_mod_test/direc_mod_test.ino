@@ -4,8 +4,8 @@
 
 #ifdef TEST_STEERING
     // Steering Motor Ctrl
-    #define STR_L_PWM 9
-    #define STR_R_PWM 6
+    #define STR_L_PWM 6
+    #define STR_R_PWM 9
     #define STR_ENABLE 4
 
     // Steering Linear Actuator Potentiometer
@@ -54,28 +54,32 @@ void setup() {
 
         digitalWrite(STR_L_PWM, 255);
         digitalWrite(STR_R_PWM, LOW);
+        digitalWrite(STR_ENABLE, HIGH);
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(STR_POT)));
             delay(100);
         }
 
+        digitalWrite(STR_ENABLE, LOW);
         Serial.println("Running R PWM");
 
         digitalWrite(STR_L_PWM, LOW);
         digitalWrite(STR_R_PWM, 255);
+        digitalWrite(STR_ENABLE, HIGH);
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(STR_POT)));
             delay(100);
         }
 
+        digitalWrite(STR_ENABLE, LOW);
         Serial.println("Done");
 
     #endif
 
     #ifdef TEST_BRAKES
-        Serial.println("Testing Brakes")
+        Serial.println("Testing Brakes");
 
         pinMode(BRK_ENABLE, OUTPUT);
         pinMode(BRK_L_PWM, OUTPUT);
@@ -90,22 +94,26 @@ void setup() {
 
         digitalWrite(BRK_L_PWM, 255);
         digitalWrite(BRK_R_PWM, LOW);
+        digitalWrite(BRK_ENABLE, HIGH);
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(BRK_POT)));
             delay(100);
         }
 
+        digitalWrite(BRK_ENABLE, LOW);
         Serial.println("Running R PWM");
-
+        
         digitalWrite(BRK_L_PWM, LOW);
         digitalWrite(BRK_R_PWM, 255);
+        digitalWrite(BRK_ENABLE, HIGH);
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(BRK_POT)));
             delay(100);
         }
 
+        digitalWrite(BRK_ENABLE, LOW);
         Serial.println("Done");
 
     #endif
