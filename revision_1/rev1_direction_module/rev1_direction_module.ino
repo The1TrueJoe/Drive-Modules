@@ -284,10 +284,10 @@ void announce() {
  * 
  */
 
-void read_brk_pot() {
+int read_brk_pot() {
     digitalWrite(COM_LED, HIGH);
 
-    int pot_value = analogRead(BRK_POT);
+    int pot_value = map(analogRead(BRK_POT), 0, 1023, 0, 255);
 
     struct can_frame can_msg_out;
 
@@ -304,6 +304,8 @@ void read_brk_pot() {
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
+
+    return pot_value;
 
 }
 
@@ -326,7 +328,7 @@ void read_brk_state() {
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
+    can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
     
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -366,10 +368,10 @@ void steer_to_pos(int pos, int power) {
  * 
  */
 
-void read_str_pot() {
+int read_str_pot() {
     digitalWrite(COM_LED, HIGH);
 
-    int pot_value = analogRead(STR_POT);
+    int pot_value = map(analogRead(STR_POT), 0, 1023, 0, 255);
 
     struct can_frame can_msg_out;
 
@@ -410,7 +412,7 @@ void read_str_state() {
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02;
+    can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -424,7 +426,7 @@ long old_pos = -999;
  * 
  */
 
-void read_str_whl() {
+long read_str_whl() {
     digitalWrite(COM_LED, HIGH);
 
     long pos = wheel_enc.read();
@@ -450,5 +452,7 @@ void read_str_whl() {
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
+
+    return pos;
 
 }

@@ -507,10 +507,15 @@ void postRelayStatus(uint8_t id) {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0A;
     can_msg_out.data[3] = id;
-    can_msg_out.data[4] = checkRelay(id) ? 0x01 : 0x02;
+    can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = 0;
+
+    if (checkRelay(id)) 
+        can_msg_out.data[7] = 0x02;
+    else
+        can_msg_out.data[7] = 0x01;
+
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);

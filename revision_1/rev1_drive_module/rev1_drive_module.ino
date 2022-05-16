@@ -341,7 +341,7 @@ void pot_zero() {
  * 
  */
 
-void get_wiper_pos() {
+int get_wiper_pos() {
     digitalWrite(COM_LED, HIGH);
 
     struct can_frame can_msg_out;
@@ -359,6 +359,8 @@ void get_wiper_pos() {
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
+
+    return wiper_pos;
     
 }
 
@@ -367,7 +369,7 @@ void get_wiper_pos() {
  * 
  */
 
-void get_pedal_pos() {
+int get_pedal_pos() {
     digitalWrite(COM_LED, HIGH);
 
     int pedal_pos = map(analogRead(PEDAL_POT), 0, 1023, 0, 255);
@@ -387,6 +389,8 @@ void get_pedal_pos() {
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
+
+    return pedal_pos;
     
 }
 
@@ -409,7 +413,11 @@ void get_en_status() {
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
+
+    if (digitalRead(ACT_SW) == RELAY_ACT)
+        can_msg_out.data[7] = 0x02;
+    else 
+        can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -435,7 +443,11 @@ void get_direc() {
     can_msg_out.data[4] = 0;
     can_msg_out.data[5] = 0;
     can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(ACT_SW) == LOW ? 0x01 : 0x02;
+
+    if (digitalRead(FWD_REV_SEL) == RELAY_ACT)
+        can_msg_out.data[7] = 0x02;
+    else 
+        can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
