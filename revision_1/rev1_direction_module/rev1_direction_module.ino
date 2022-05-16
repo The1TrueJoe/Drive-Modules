@@ -16,8 +16,8 @@
 #include "Encoder.h"
 
 // Steering Motor Ctrl
-#define STR_L_PWM 9
-#define STR_R_PWM 6
+#define STR_L_PWM 6
+#define STR_R_PWM 9
 #define STR_ENABLE 4
 
 // Steering Linear Actuator Potentiometer
