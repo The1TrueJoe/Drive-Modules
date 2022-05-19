@@ -17,8 +17,10 @@
 
 // Steering Motor Ctrl
 #define STR_L_PWM 6
+#define STR_L_ENABLE 4
+
 #define STR_R_PWM 9
-#define STR_ENABLE 4
+#define STR_R_ENABLE 0
 
 // Steering Linear Actuator Potentiometer
 #define STR_POT A5
@@ -30,8 +32,10 @@
 
 // Brake Motor Ctrl
 #define BRK_L_PWM 5
+#define BRK_L_ENABLE 7
+
 #define BRK_R_PWM 10
-#define BRK_ENABLE 7
+#define BRK_R_ENABLE 1
 
 // Brake Actuator Potentiometer
 #define BRK_POT A4
@@ -79,29 +83,30 @@ void setup() {
     can.setNormalMode();
   
     // Setup Steering Motor
-    pinMode(STR_ENABLE, OUTPUT);
+    pinMode(STR_L_ENABLE, OUTPUT);
+    pinMode(STR_R_ENABLE, OUTPUT);
     pinMode(STR_L_PWM, OUTPUT);
     pinMode(STR_R_PWM, OUTPUT);
     pinMode(STR_POT, INPUT);
 
     // Disable
-    digitalWrite(STR_ENABLE, LOW);
-    digitalWrite(STR_L_PWM, LOW);
-    digitalWrite(STR_R_PWM, LOW);
+    digitalWrite(STR_L_ENABLE, LOW);
+    digitalWrite(STR_R_ENABLE, LOW);
+    analogWrite(STR_L_PWM, 0);
+    analogWrite(STR_R_PWM, 0);
 
     // Setup brake motor
-    pinMode(BRK_ENABLE, OUTPUT);
+    pinMode(BRK_L_ENABLE, OUTPUT);
+    pinMode(BRK_R_ENABLE, OUTPUT);
     pinMode(BRK_L_PWM, OUTPUT);
     pinMode(BRK_R_PWM, OUTPUT);
     pinMode(BRK_POT, INPUT);
 
     // Disable
-    digitalWrite(BRK_ENABLE, LOW);
-    digitalWrite(BRK_L_PWM, LOW);
-    digitalWrite(BRK_R_PWM, LOW);
-
-    // Announce ready to CAN bus
-    announce();
+    digitalWrite(BRK_L_ENABLE, LOW);
+    digitalWrite(BRK_R_ENABLE, LOW);
+    analogWrite(BRK_L_PWM, 0);
+    analogWrite(BRK_R_PWM, 0);
 
     // LED Low
     digitalWrite(ACT_LED, LOW);
@@ -151,12 +156,11 @@ void can_irq() {
                 if (can_msg_in.data[1] == 0x01) {
                     if (can_msg_in.data[2] == 0x0A) {
                         if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(STR_ENABLE, LOW);
-                            digitalWrite(STR_L_PWM, LOW);
-                            digitalWrite(STR_R_PWM, LOW);
-
-                        } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(STR_ENABLE, HIGH);
+                            digitalWrite(STR_L_ENABLE, LOW);
+                            analogWrite(STR_L_PWM, 0);
+                            
+                            digitalWrite(STR_L_ENABLE, LOW);
+                            analogWrite(STR_R_PWM, 0);
 
                         } else {
                             read_str_state();
@@ -165,12 +169,18 @@ void can_irq() {
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01) {
+                            digitalWrite(STR_R_ENABLE, LOW);
+                            analogWrite(STR_R_PWM, 0);
+
                             analogWrite(STR_L_PWM, can_msg_in.data[4]);
-                            digitalWrite(STR_R_PWM, LOW);
+                            digitalWrite(STR_L_ENABLE, HIGH);
 
                         } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(STR_L_PWM, LOW);
+                            digitalWrite(STR_L_ENABLE, 0);
+                            analogWrite(STR_L_PWM, 0);
+
                             analogWrite(STR_R_PWM, can_msg_in.data[4]);
+                            digitalWrite(STR_R_ENABLE, HIGH);
 
                         } else {
                             read_str_pot();
@@ -181,12 +191,11 @@ void can_irq() {
                 } else if (can_msg_in.data[1] == 0x02) {
                     if (can_msg_in.data[2] == 0x0A) {
                         if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(BRK_ENABLE, LOW);
-                            digitalWrite(BRK_L_PWM, LOW);
-                            digitalWrite(BRK_R_PWM, LOW);
+                            digitalWrite(BRK_L_ENABLE, LOW);
+                            analogWrite(BRK_L_PWM, 0);
 
-                        } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(BRK_ENABLE, HIGH);
+                            digitalWrite(BRK_R_ENABLE, LOW);
+                            analogWrite(BRK_R_PWM, 0);
 
                         } else {
                             read_brk_state();
@@ -195,12 +204,18 @@ void can_irq() {
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01) {
+                            digitalWrite(BRK_R_ENABLE, LOW);
+                            analogWrite(BRK_R_PWM, 0);
+
                             analogWrite(BRK_L_PWM, can_msg_in.data[4]);
-                            digitalWrite(BRK_R_PWM, LOW);
+                            digitalWrite(BRK_L_ENABLE, HIGH);
 
                         } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(BRK_L_PWM, LOW);
+                            digitalWrite(BRK_L_ENABLE, LOW);
+                            analogWrite(BRK_L_PWM, 0);
+
                             analogWrite(BRK_R_PWM, can_msg_in.data[4]);
+                            digitalWrite(BRK_R_ENABLE, HIGH);
 
                         } else {
                             read_brk_pot();
@@ -234,14 +249,7 @@ void can_irq() {
         }
 
         // Clear the message buffer
-        can_msg_in.data[0] = 0;
-        can_msg_in.data[1] = 0;
-        can_msg_in.data[2] = 0;
-        can_msg_in.data[3] = 0;
-        can_msg_in.data[4] = 0;
-        can_msg_in.data[5] = 0;
-        can_msg_in.data[6] = 0;
-        can_msg_in.data[7] = 0;
+        fill_data(&can_msg_in, 0, 7);
 
         digitalWrite(ACT_LED, LOW);
 
@@ -249,34 +257,18 @@ void can_irq() {
 }
 
 /**
- * @brief Get the wiper pos
+ * @brief Fill the rest of the data frame with zeroes
  * 
+ * @param frame Pointer to can frame
+ * @param start Start index (inclusive)
+ * @param end End index (inclusive)
  */
 
-void announce() {
-    digitalWrite(COM_LED, HIGH);
-
-    struct can_frame can_msg_out;
-
-    can_msg_out.can_id = CAN_ID;
-    can_msg_out.can_dlc = CAN_DLC;
-    can_msg_out.data[0] = 1;
-    can_msg_out.data[1] = 2;
-    can_msg_out.data[2] = 3;
-    can_msg_out.data[3] = 4;
-    can_msg_out.data[4] = 5;
-    can_msg_out.data[5] = 6;
-    can_msg_out.data[6] = 7;
-    can_msg_out.data[7] = 8;
-
-    for (int i = 0; i < 5; i++) {
-        can.sendMessage(&can_msg_out);
-        delay(100);
+void fill_data(can_frame* frame, uint8_t start, uint8_t end) {
+    for (int i = start; i < end+1; i++) {
+        frame->data[i] = 0;
 
     }
-    
-    digitalWrite(COM_LED, LOW);
-    
 }
 
 /**
@@ -297,10 +289,8 @@ int read_brk_pot() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0F;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = pot_value >> 8;
-    can_msg_out.data[7] = pot_value & 0xFF;
+    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[7] = pot_value;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -325,10 +315,8 @@ void read_brk_state() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x02;
     can_msg_out.data[3] = 0x0A;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
+    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[7] = (digitalRead(BRK_L_ENABLE) + digitalRead(BRK_R_ENABLE)) + 0x01;
     
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -343,17 +331,23 @@ void read_brk_state() {
  */
 
 void steer_to_pos(int pos, int power) {
-    if (digitalRead(STR_ENABLE) != 1) { return; }
+    if ((digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) != 0) { return; }
     int current_pos = read_str_pot();
 
     while (abs(current_pos - pos) > STEER_TOL) {
         if (current_pos < pos) {
+            digitalWrite(STR_R_ENABLE, LOW);
+            analogWrite(STR_R_PWM, 0);
+
             analogWrite(STR_L_PWM, power);
-            digitalWrite(STR_R_PWM, LOW);
+            digitalWrite(STR_L_ENABLE, HIGH);
 
         } else if (current_pos > pos) {
+            digitalWrite(STR_R_ENABLE, HIGH);
             analogWrite(STR_R_PWM, power);
-            digitalWrite(STR_L_PWM, LOW);
+
+            analogWrite(STR_L_PWM, 0);
+            digitalWrite(STR_L_ENABLE, HIGH);
 
         }
 
@@ -381,10 +375,8 @@ int read_str_pot() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0F;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = pot_value >> 8;
-    can_msg_out.data[7] = pot_value & 0xFF;
+    fill_data(&can_msg_out, 4, 6);;
+    can_msg_out.data[7] = pot_value;
     
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -409,10 +401,8 @@ void read_str_state() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0A;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
-    can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
+    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[7] = (digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) + 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -445,9 +435,7 @@ long read_str_whl() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0E;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
+    fill_data(&can_msg_out, 4, 6);
     can_msg_out.data[7] = change_id;
 
     can.sendMessage(&can_msg_out);
