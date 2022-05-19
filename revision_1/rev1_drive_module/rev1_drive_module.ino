@@ -62,6 +62,9 @@ volatile bool pedal_detect_enable = false;
 // Direct pedal feed
 volatile bool direct_pedal_feed = false;
 
+// Indentfiy
+volatile bool identify = false;
+
 /**
  * @brief Main setup
  * 
@@ -283,9 +286,9 @@ void can_irq() {
                     }
 
                 } else if (can_msg_in.data[1] = 0x0F) {
-                    if (can_msg_in.data[2] = 0x01)
+                    if (can_msg_in.data[2] = 0x01) 
                         direct_pedal_feed = true;
-                    else (can_msg_in.data[2] = 0x02)
+                    else if (can_msg_in.data[2] = 0x02)
                         direct_pedal_feed = false;
 
                 }
@@ -298,7 +301,6 @@ void can_irq() {
                         get_pedal_pos();
                     else if (can_msg_in.data[2] == 0x0E)
                         get_en_status();
-
 
                 } else if (can_msg_in.data[1] == 0x0D) {
                     get_direc();
