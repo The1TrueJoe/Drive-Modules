@@ -2,16 +2,19 @@
 #define TEST_BRAKES
 #define TEST_WHEEL
 
+#include <BTS7960.h>
+
 #ifdef TEST_STEERING
     // Steering Motor Ctrl
     #define STR_L_PWM 6
-    #define STR_L_ENABLE 4
-
     #define STR_R_PWM 9
-    #define STR_R_ENABLE 0
+    #define STR_ENABLE 4
 
     // Steering Linear Actuator Potentiometer
     #define STR_POT A5
+
+    // Motor Controller
+    BTS7960 steering_motor(STR_ENABLE, STR_L_PWM, STR_R_PWM);
 
 #endif
 
@@ -29,13 +32,14 @@
 #ifdef TEST_BRAKES
     // Brake Motor Ctrl
     #define BRK_L_PWM 5
-    #define BRK_L_ENABLE 7
-
     #define BRK_R_PWM 10
-    #define BRK_R_ENABLE 1
+    #define BRK_ENABLE 7
 
     // Brake Actuator Potentiometer
     #define BRK_POT A4
+
+    // Motor Controller
+    BTS7960 brake_motor(BRK_ENABLE, BRK_L_PWM, BRK_R_PWM);
 
 #endif
 
@@ -45,45 +49,36 @@ void setup() {
     delay(2000);
 
     #ifdef TEST_STEERING
-        pinMode(STR_L_ENABLE, OUTPUT);
-        pinMode(STR_R_ENABLE, OUTPUT);
-        pinMode(STR_L_PWM, OUTPUT);
-        pinMode(STR_R_PWM, OUTPUT);
-        pinMode(STR_POT, INPUT);
+        Serial.println("Testing Steering");
 
-        digitalWrite(STR_L_ENABLE, LOW);
-        digitalWrite(STR_R_ENABLE, LOW);
-        digitalWrite(STR_L_PWM, LOW);
-        digitalWrite(STR_R_PWM, LOW);
+        steering_motor.Disable();
+        steering_motor.Stop();
 
         Serial.println("Running L PWM");
 
-        digitalWrite(STR_R_ENABLE, LOW);
-        analogWrite(STR_R_PWM, 0);
-
-        analogWrite(STR_L_PWM, 255);
-        digitalWrite(STR_L_ENABLE, LOW);
+        steering_motor.TurnLeft(255);
+        steering_motor.Enable();
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(STR_POT)));
             delay(100);
         }
 
-        digitalWrite(STR_L_ENABLE, LOW);
-        analogWrite(STR_L_PWM, 0);
+        steering_motor.Disable();
+        steering_motor.Stop();
 
         Serial.println("Running R PWM");
 
-        analogWrite(STR_R_PWM, 255);
-        digitalWrite(STR_R_ENABLE, LOW);
+        steering_motor.TurnRight(255);
+        steering_motor.Enable();
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(STR_POT)));
             delay(100);
         }
 
-        digitalWrite(STR_R_ENABLE, LOW);
-        analogWrite(STR_R_PWM, 0);
+        steering_motor.Disable();
+        steering_motor.Stop();
 
         Serial.println("Done");
 
@@ -92,45 +87,34 @@ void setup() {
     #ifdef TEST_BRAKES
         Serial.println("Testing Brakes");
 
-        pinMode(BRK_L_ENABLE, OUTPUT);
-        pinMode(BRK_R_ENABLE, OUTPUT);
-        pinMode(BRK_L_PWM, OUTPUT);
-        pinMode(BRK_R_PWM, OUTPUT);
-        pinMode(BRK_POT, INPUT);
-
-        digitalWrite(BRK_L_ENABLE, LOW);
-        digitalWrite(BRK_R_ENABLE, LOW);
-        digitalWrite(BRK_L_PWM, LOW);
-        digitalWrite(BRK_R_PWM, LOW);
+        brake_motor.Disable();
+        brake_motor.Stop();
 
         Serial.println("Running L PWM");
 
-        digitalWrite(BRK_R_ENABLE, LOW);
-        analogWrite(BRK_R_PWM, 0);
-
-        analogWrite(BRK_L_PWM, 255);
-        digitalWrite(BRK_L_ENABLE, LOW);
+        brake_motor.TurnLeft(255);
+        brake_motor.Enable();
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(BRK_POT)));
             delay(100);
         }
 
-        digitalWrite(BRK_L_ENABLE, LOW);
-        analogWrite(BRK_L_PWM, 0);
+        brake_motor.Disable();
+        brake_motor.Stop();
 
         Serial.println("Running R PWM");
 
-        analogWrite(BRK_R_PWM, 255);
-        digitalWrite(BRK_R_ENABLE, LOW);
+        brake_motor.TurnRight(255);
+        brake_motor.Enable();
         
         for (int i = 0; i < 50; i++) {
             Serial.println("Pot Reading: " + String(analogRead(BRK_POT)));
             delay(100);
         }
 
-        digitalWrite(BRK_R_ENABLE, LOW);
-        analogWrite(BRK_R_PWM, 0);
+        brake_motor.Disable();
+        brake_motor.Stop();
         
         Serial.println("Done");
 

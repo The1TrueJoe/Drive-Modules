@@ -16,3 +16,6 @@
 [submodule "revision_1/libs/avr-libc"]
 	path = revision_1/libs/avr-libc
 	url = https://github.com/GSSM-AutoGolfCart/avr-libc
+[submodule "revision_1/libs/Arduino-BTS7960"]
+	path = revision_1/libs/Arduino-BTS7960
+	url = https://github.com/GSSM-AutoGolfCart/Arduino-BTS7960

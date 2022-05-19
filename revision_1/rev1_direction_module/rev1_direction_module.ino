@@ -12,15 +12,14 @@
  * 
  */
 
-#include "mcp2515.h"
-#include "Encoder.h"
+#include <mcp2515.h>
+#include <Encoder.h>
+#include <BTS7960.h>
 
 // Steering Motor Ctrl
 #define STR_L_PWM 6
-#define STR_L_ENABLE 4
-
 #define STR_R_PWM 9
-#define STR_R_ENABLE 0
+#define STR_ENABLE 4
 
 // Steering Linear Actuator Potentiometer
 #define STR_POT A5
@@ -32,10 +31,8 @@
 
 // Brake Motor Ctrl
 #define BRK_L_PWM 5
-#define BRK_L_ENABLE 7
-
 #define BRK_R_PWM 10
-#define BRK_R_ENABLE 1
+#define BRK_ENABLE 7
 
 // Brake Actuator Potentiometer
 #define BRK_POT A4
@@ -55,6 +52,10 @@ MCP2515 can(CAN_CS);
 
 // Encoder
 Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
+
+// Motor Controllers
+BTS7960 steering_motor(STR_ENABLE, STR_L_PWM, STR_R_PWM);
+BTS7960 brake_motor(BRK_ENABLE, BRK_L_PWM, BRK_R_PWM);
 
 // Identfiy
 volatile bool identify = false;
@@ -85,31 +86,12 @@ void setup() {
     can.setBitrate(CAN_125KBPS);
     can.setNormalMode();
   
-    // Setup Steering Motor
-    pinMode(STR_L_ENABLE, OUTPUT);
-    pinMode(STR_R_ENABLE, OUTPUT);
-    pinMode(STR_L_PWM, OUTPUT);
-    pinMode(STR_R_PWM, OUTPUT);
-    pinMode(STR_POT, INPUT);
+    // Setup Motor
+    steering_motor.Disable();
+    steering_motor.Stop();
 
-    // Disable
-    digitalWrite(STR_L_ENABLE, LOW);
-    digitalWrite(STR_R_ENABLE, LOW);
-    analogWrite(STR_L_PWM, 0);
-    analogWrite(STR_R_PWM, 0);
-
-    // Setup brake motor
-    pinMode(BRK_L_ENABLE, OUTPUT);
-    pinMode(BRK_R_ENABLE, OUTPUT);
-    pinMode(BRK_L_PWM, OUTPUT);
-    pinMode(BRK_R_PWM, OUTPUT);
-    pinMode(BRK_POT, INPUT);
-
-    // Disable
-    digitalWrite(BRK_L_ENABLE, LOW);
-    digitalWrite(BRK_R_ENABLE, LOW);
-    analogWrite(BRK_L_PWM, 0);
-    analogWrite(BRK_R_PWM, 0);
+    brake_motor.Disable();
+    brake_motor.Stop();
 
     // LED Low
     digitalWrite(ACT_LED, LOW);
@@ -168,46 +150,34 @@ void can_irq() {
                 if (can_msg_in.data[1] == 0x01) {
                     if (can_msg_in.data[2] == 0x0A) {
                         if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(STR_L_ENABLE, LOW);
-                            analogWrite(STR_L_PWM, 0);
-                            
-                            digitalWrite(STR_R_ENABLE, LOW);
-                            analogWrite(STR_R_PWM, 0);
+                            steering_motor.Disable(); 
+                            steering_motor.Stop();
 
+                        } else if (can_msg_in.data[3] == 0x02) {
+                            steering_motor.Enable();
                         } else {
                             read_str_state();
 
                         }
 
                     } else if (can_msg_in.data[2] == 0x0C) {
-                        if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(STR_R_ENABLE, LOW);
-                            analogWrite(STR_R_PWM, 0);
-
-                            analogWrite(STR_L_PWM, can_msg_in.data[4]);
-                            digitalWrite(STR_L_ENABLE, HIGH);
-
-                        } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(STR_L_ENABLE, LOW);
-                            analogWrite(STR_L_PWM, 0);
-
-                            analogWrite(STR_R_PWM, can_msg_in.data[4]);
-                            digitalWrite(STR_R_ENABLE, HIGH);
-
-                        } else {
+                        if (can_msg_in.data[3] == 0x01)
+                            steering_motor.TurnLeft(can_msg_in.data[4]);
+                        else if (can_msg_in.data[3] == 0x02)
+                            steering_motor.TurnRight(can_msg_in.data[4]);
+                        else
                             read_str_pot();
 
-                        }
                     }
 
                 } else if (can_msg_in.data[1] == 0x02) {
                     if (can_msg_in.data[2] == 0x0A) {
                         if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(BRK_L_ENABLE, LOW);
-                            analogWrite(BRK_L_PWM, 0);
+                            brake_motor.Disable();
+                            brake_motor.Stop();
 
-                            digitalWrite(BRK_R_ENABLE, LOW);
-                            analogWrite(BRK_R_PWM, 0);
+                        } else if (can_msg_in.data[4] == 0x02) {
+                            brake_motor.Enable();
 
                         } else {
                             read_brk_state();
@@ -215,24 +185,13 @@ void can_irq() {
                         }
 
                     } else if (can_msg_in.data[2] == 0x0C) {
-                        if (can_msg_in.data[3] == 0x01) {
-                            digitalWrite(BRK_R_ENABLE, LOW);
-                            analogWrite(BRK_R_PWM, 0);
-
-                            analogWrite(BRK_L_PWM, can_msg_in.data[4]);
-                            digitalWrite(BRK_L_ENABLE, HIGH);
-
-                        } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(BRK_L_ENABLE, LOW);
-                            analogWrite(BRK_L_PWM, 0);
-
-                            analogWrite(BRK_R_PWM, can_msg_in.data[4]);
-                            digitalWrite(BRK_R_ENABLE, HIGH);
-
-                        } else {
+                        if (can_msg_in.data[3] == 0x01) 
+                            brake_motor.TurnLeft(can_msg_in.data[4]);
+                        else if (can_msg_in.data[3] == 0x02)
+                            brake_motor.TurnRight(can_msg_in.data[4]);
+                        else
                             read_brk_pot();
 
-                        }
                     }
                 }
 
@@ -307,23 +266,17 @@ void fill_data(can_frame* frame, uint8_t start, uint8_t end) {
  */
 
 void steer_to_pos(int pos, int power) {
-    if ((digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) != 0) { return; }
+    if (digitalRead(STR_ENABLE) != LOW) { return; }
     int current_pos = read_str_pot();
 
     while (abs(current_pos - pos) > STEER_TOL) {
         if (current_pos < pos) {
-            digitalWrite(STR_R_ENABLE, LOW);
-            analogWrite(STR_R_PWM, 0);
-
-            analogWrite(STR_L_PWM, power);
-            digitalWrite(STR_L_ENABLE, HIGH);
+            steering_motor.TurnLeft(power);
+            steering_motor.Enable();
 
         } else if (current_pos > pos) {
-            digitalWrite(STR_R_ENABLE, HIGH);
-            analogWrite(STR_R_PWM, power);
-
-            analogWrite(STR_L_PWM, 0);
-            digitalWrite(STR_L_ENABLE, HIGH);
+            steering_motor.TurnRight(power);
+            steering_motor.Enable();
 
         }
 
@@ -349,8 +302,8 @@ void compound_update() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0C;
     can_msg_out.data[3] = 0x01;
-    can_msg_out.data[4] = (digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) + 0x01;
-    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(STR_L_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[4] = digitalRead(STR_ENABLE) + 0x01;
+    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
     can_msg_out.data[6] = max(analogRead(STR_L_PWM), analogRead(STR_R_PWM));
     can_msg_out.data[7] = map(analogRead(STR_POT), 0, 1023, 0, 255);
 
@@ -362,8 +315,8 @@ void compound_update() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0C;
     can_msg_out.data[3] = 0x02;
-    can_msg_out.data[4] = (digitalRead(BRK_L_ENABLE) + digitalRead(BRK_R_ENABLE)) + 0x01;
-    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(BRK_L_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[4] = digitalRead(BRK_ENABLE) + 0x01;
+    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(BRK_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
     can_msg_out.data[6] = max(analogRead(BRK_L_PWM), analogRead(BRK_R_PWM));
     can_msg_out.data[7] = map(analogRead(BRK_POT), 0, 1023, 0, 255);
 
@@ -418,7 +371,7 @@ void read_brk_state() {
     can_msg_out.data[2] = 0x02;
     can_msg_out.data[3] = 0x0A;
     fill_data(&can_msg_out, 4, 6);
-    can_msg_out.data[7] = (digitalRead(BRK_L_ENABLE) + digitalRead(BRK_R_ENABLE)) + 0x01;
+    can_msg_out.data[7] = digitalRead(BRK_ENABLE) + 0x01;
     
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -470,7 +423,7 @@ void read_str_state() {
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0A;
     fill_data(&can_msg_out, 4, 6);
-    can_msg_out.data[7] = (digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) + 0x01;
+    can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
