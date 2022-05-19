@@ -57,8 +57,10 @@ volatile int wiper_pos = 0;
 MCP2515 can(CAN_CS);
 
 // Pedal status
-volatile bool pedal_pressed = false;
 volatile bool pedal_detect_enable = false;
+
+// Direct pedal feed
+volatile bool direct_pedal_feed = false;
 
 /**
  * @brief Main setup
@@ -134,42 +136,56 @@ int counter = 0;
  */
 
 void loop() {
+    while (identify) {
+        digitalWrite(ACT_LED, LOW);
+        digitalWrite(COM_LED, LOW);
+
+        delay(1000);
+
+        digitalWrite(ACT_LED, HIGH);
+        digitalWrite(COM_LED, HIGH);
+
+        delay(1000);
+
+    }
+
     if (pedal_detect_enable) {
         if (digitalRead(PEDAL_SW) == LOW) {
-            digitalWrite(ACT_LED, HIGH);
+            digitalWrite(PEDAL_LED, HIGH);
             pedal_act();
 
-            while (digitalRead(PEDAL_SW) == LOW) { 
-                get_pedal_pos(); 
-                
-                if (counter % 5 == 0) { get_wiper_pos(); }
+            if (direct_pedal_feed) {
+                while (digitalRead(PEDAL_SW) == LOW) {
+                    pot_write(map(analogRead(PEDAL_POT), 0, 1023, 0, 255));
 
-                delay(400);
-                counter++;
-            
-            } 
+                    if (counter > 100) { compound_update(); counter = 0; }
+
+                    delay(10);
+                    counter++;
+
+                }
+
+                counter /= 10;
+
+            } else {
+                while (digitalRead(PEDAL_SW) == LOW) { 
+                    get_pedal_pos(); 
+                    
+                    if (counter % 10 == 0) { compound_update(); }
+
+                    delay(100);
+                    counter++;
+                
+                } 
+            }
 
             pedal_deact();
-            digitalWrite(ACT_LED, LOW);
+            digitalWrite(PEDAL_LED, LOW);
 
         }
     }
     
-    if (counter % 100 == 0) { 
-        get_wiper_pos();   
-
-        if (counter >= 200 == 0) {
-            digitalWrite(ACT_LED, HIGH);
-
-            get_direc(); 
-            get_en_status(); 
-
-            counter = 0;
-
-            digitalWrite(ACT_LED, LOW);
-
-        }
-    }
+    if (counter >= 10) {  compound_update(); counter == 0; }
 
     delay(100);
     counter++;
@@ -200,9 +216,9 @@ void can_irq() {
 
                     } else if (can_msg_in.data[2] == 0x0E) {
                         if (can_msg_in.data[3] == 0x01)
-                            digitalWrite(ACT_SW, LOW);
+                            digitalWrite(ACT_SW, RELAY_DEACT);
                         else if (can_msg_in.data[3] == 0x02) 
-                            digitalWrite(ACT_SW, HIGH);
+                            digitalWrite(ACT_SW, RELAY_ACT);
                         else
                             get_en_status();
 
@@ -210,9 +226,9 @@ void can_irq() {
 
                 } else if (can_msg_in.data[1] == 0x0D) {
                     if (can_msg_in.data[2] == 0x01) 
-                        digitalWrite(FWD_REV_SEL, LOW);
+                        digitalWrite(FWD_REV_SEL, RELAY_DEACT);
                     else if (can_msg_in.data[2] == 0x02) 
-                        digitalWrite(FWD_REV_SEL, HIGH);
+                        digitalWrite(FWD_REV_SEL, RELAY_ACT);
                     else
                         get_direc();
 
@@ -250,6 +266,28 @@ void can_irq() {
                         get_wiper_pos();
 
                     }
+                    
+                } else if (can_msg_in.data[1] = 0x0E) {
+                    if (can_msg_in.data[2] = 0x01) {
+                        identify = true;
+
+                        digitalWrite(ACT_LED, HIGH);
+                        digitalWrite(COM_LED, HIGH);
+
+                    } else if (can_msg_in.data[2] = 0x02) {
+                        identify = false;
+
+                        digitalWrite(ACT_LED, LOW);
+                        digitalWrite(COM_LED, LOW);
+
+                    }
+
+                } else if (can_msg_in.data[1] = 0x0F) {
+                    if (can_msg_in.data[2] = 0x01)
+                        direct_pedal_feed = true;
+                    else (can_msg_in.data[2] = 0x02)
+                        direct_pedal_feed = false;
+
                 }
 
             } else if (can_msg_in.data[0] == 0x0C) {
@@ -335,6 +373,32 @@ void pot_zero() {
 }
 
 /**
+ * @brief Updates general information
+ * 
+ */
+
+void compound_update() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0C;
+    can_msg_out.data[3] = digitalRead(ACT_SW) == RELAY_ACT ? 0x02 : 0x01;
+    can_msg_out.data[4] = digitalRead(FWD_REV_SEL) == RELAY_ACT ? 0x02 : 0x01;
+    can_msg_out.data[5] = wiper_pos;
+    can_msg_out.data[6] = pedal_detect_enable ? digitalRead(PEDAL_SW) + 0x01 : 0x00;
+    can_msg_out.data[7] = pedal_detect_enable ? map(analogRead(PEDAL_POT), 0, 1023, 0, 255) : 0;
+
+    can.sendMessage(&can_msg_out);
+    digitalWrite(COM_LED, LOW);
+
+}
+
+/**
  * @brief Get the wiper pos
  * 
  */
@@ -350,9 +414,8 @@ int get_wiper_pos() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0A;
     can_msg_out.data[3] = 0x0A;
-    fill_data(&can_msg_out, 4, 5);
-    can_msg_out.data[6] = wiper_pos >> 8;
-    can_msg_out.data[7] = wiper_pos & 0xFF;
+    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[7] = wiper_pos;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -406,11 +469,7 @@ void get_en_status() {
     can_msg_out.data[2] = 0x0A;
     can_msg_out.data[3] = 0x0E;
     fill_data(&can_msg_out, 4, 6);
-
-    if (digitalRead(ACT_SW) == RELAY_ACT)
-        can_msg_out.data[7] = 0x02;
-    else 
-        can_msg_out.data[7] = 0x01;
+    can_msg_out.data[7] = digitalRead(ACT_SW) == RELAY_ACT ? 0x02 : 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
@@ -433,11 +492,7 @@ void get_direc() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0D;
     fill_data(&can_msg_out, 3, 6);
-
-    if (digitalRead(FWD_REV_SEL) == RELAY_ACT)
-        can_msg_out.data[7] = 0x02;
-    else 
-        can_msg_out.data[7] = 0x01;
+    can_msg_out.data[7] = digitalRead(FWD_REV_SEL) == RELAY_ACT ? 0x02 : 0x01;
 
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);

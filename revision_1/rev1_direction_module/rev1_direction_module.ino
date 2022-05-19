@@ -56,6 +56,9 @@ MCP2515 can(CAN_CS);
 // Encoder
 Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
 
+// Identfiy
+volatile bool identify = false;
+
 /**
  * @brief Setup function
  * 
@@ -122,13 +125,22 @@ void setup() {
  */
 
 void loop() {
+    while (identify) {
+        digitalWrite(ACT_LED, LOW);
+        digitalWrite(COM_LED, LOW);
+
+        delay(1000);
+
+        digitalWrite(ACT_LED, HIGH);
+        digitalWrite(COM_LED, HIGH);
+
+        delay(1000);
+
+    }
+
     // Updates
     digitalWrite(ACT_LED, HIGH);
-    read_brk_pot();
-    read_brk_state();
-    read_str_pot();
-    read_str_state();
-    read_str_whl();
+    compound_update();
     digitalWrite(ACT_LED, LOW);
 
     // 5 Second Delay
@@ -159,7 +171,7 @@ void can_irq() {
                             digitalWrite(STR_L_ENABLE, LOW);
                             analogWrite(STR_L_PWM, 0);
                             
-                            digitalWrite(STR_L_ENABLE, LOW);
+                            digitalWrite(STR_R_ENABLE, LOW);
                             analogWrite(STR_R_PWM, 0);
 
                         } else {
@@ -176,7 +188,7 @@ void can_irq() {
                             digitalWrite(STR_L_ENABLE, HIGH);
 
                         } else if (can_msg_in.data[3] == 0x02) {
-                            digitalWrite(STR_L_ENABLE, 0);
+                            digitalWrite(STR_L_ENABLE, LOW);
                             analogWrite(STR_L_PWM, 0);
 
                             analogWrite(STR_R_PWM, can_msg_in.data[4]);
@@ -225,8 +237,24 @@ void can_irq() {
                 }
 
             } else if (can_msg_in.data[0] == 0x0B) {
-                if (can_msg_in.data[1] == 0x01) 
+                if (can_msg_in.data[1] == 0x01) {
                     steer_to_pos(can_msg_in.data[2] | (can_msg_in.data[3] << 8), can_msg_in.data[3] != 0 ? 255 : can_msg_in.data[4]);
+
+                } else if (can_msg_in.data[1] = 0x0E) {
+                    if (can_msg_in.data[2] = 0x01) {
+                        identify = true;
+
+                        digitalWrite(ACT_LED, HIGH);
+                        digitalWrite(COM_LED, HIGH);
+
+                    } else if (can_msg_in.data[2] = 0x02) {
+                        identify = false;
+
+                        digitalWrite(ACT_LED, LOW);
+                        digitalWrite(COM_LED, LOW);
+
+                    }
+                }
               
             } else if (can_msg_in.data[0] == 0x0C) {
                 if (can_msg_in.data[1] == 0x01) {
@@ -272,6 +300,80 @@ void fill_data(can_frame* frame, uint8_t start, uint8_t end) {
 }
 
 /**
+ * @brief Steer to a set postion
+ * 
+ * @param pos Position (0-1023)
+ * @param power Power Level (0-255)
+ */
+
+void steer_to_pos(int pos, int power) {
+    if ((digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) != 0) { return; }
+    int current_pos = read_str_pot();
+
+    while (abs(current_pos - pos) > STEER_TOL) {
+        if (current_pos < pos) {
+            digitalWrite(STR_R_ENABLE, LOW);
+            analogWrite(STR_R_PWM, 0);
+
+            analogWrite(STR_L_PWM, power);
+            digitalWrite(STR_L_ENABLE, HIGH);
+
+        } else if (current_pos > pos) {
+            digitalWrite(STR_R_ENABLE, HIGH);
+            analogWrite(STR_R_PWM, power);
+
+            analogWrite(STR_L_PWM, 0);
+            digitalWrite(STR_L_ENABLE, HIGH);
+
+        }
+
+        current_pos = read_str_pot();
+    }
+
+    read_str_pot();
+}
+
+/**
+ * @brief Updates general information
+ * 
+ */
+
+void compound_update() {
+    digitalWrite(COM_LED, HIGH);
+
+    struct can_frame can_msg_out;
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0C;
+    can_msg_out.data[3] = 0x01;
+    can_msg_out.data[4] = (digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) + 0x01;
+    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(STR_L_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[6] = max(analogRead(STR_L_PWM), analogRead(STR_R_PWM));
+    can_msg_out.data[7] = map(analogRead(STR_POT), 0, 1023, 0, 255);
+
+    can.sendMessage(&can_msg_out);
+
+    can_msg_out.can_id = CAN_ID;
+    can_msg_out.can_dlc = CAN_DLC;
+    can_msg_out.data[0] = 0x0C;
+    can_msg_out.data[1] = 0x0C;
+    can_msg_out.data[2] = 0x0C;
+    can_msg_out.data[3] = 0x02;
+    can_msg_out.data[4] = (digitalRead(BRK_L_ENABLE) + digitalRead(BRK_R_ENABLE)) + 0x01;
+    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(BRK_L_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[6] = max(analogRead(BRK_L_PWM), analogRead(BRK_R_PWM));
+    can_msg_out.data[7] = map(analogRead(BRK_POT), 0, 1023, 0, 255);
+
+    can.sendMessage(&can_msg_out);
+
+    digitalWrite(COM_LED, LOW);
+
+}
+
+/**
  * @brief Read the brake potentiometer
  * 
  */
@@ -287,7 +389,7 @@ int read_brk_pot() {
     can_msg_out.can_dlc = CAN_DLC;
     can_msg_out.data[0] = 0x0C;
     can_msg_out.data[1] = 0x0C;
-    can_msg_out.data[2] = 0x01;
+    can_msg_out.data[2] = 0x02;
     can_msg_out.data[3] = 0x0F;
     fill_data(&can_msg_out, 4, 6);
     can_msg_out.data[7] = pot_value;
@@ -321,40 +423,6 @@ void read_brk_state() {
     can.sendMessage(&can_msg_out);
     digitalWrite(COM_LED, LOW);
 
-}
-
-/**
- * @brief Steer to a set postion
- * 
- * @param pos Position (0-1023)
- * @param power Power Level (0-255)
- */
-
-void steer_to_pos(int pos, int power) {
-    if ((digitalRead(STR_L_ENABLE) + digitalRead(STR_R_ENABLE)) != 0) { return; }
-    int current_pos = read_str_pot();
-
-    while (abs(current_pos - pos) > STEER_TOL) {
-        if (current_pos < pos) {
-            digitalWrite(STR_R_ENABLE, LOW);
-            analogWrite(STR_R_PWM, 0);
-
-            analogWrite(STR_L_PWM, power);
-            digitalWrite(STR_L_ENABLE, HIGH);
-
-        } else if (current_pos > pos) {
-            digitalWrite(STR_R_ENABLE, HIGH);
-            analogWrite(STR_R_PWM, power);
-
-            analogWrite(STR_L_PWM, 0);
-            digitalWrite(STR_L_ENABLE, HIGH);
-
-        }
-
-        current_pos = read_str_pot();
-    }
-
-    read_str_pot();
 }
 
 /**
@@ -420,12 +488,12 @@ long read_str_whl() {
     digitalWrite(COM_LED, HIGH);
 
     long pos = wheel_enc.read();
-    uint8_t change_id = 0x01;
+    uint8_t change_id = 0x00;
 
     if (pos > old_pos)
-        change_id = 0x02;
+        change_id = 0x01;
     else if (pos < old_pos)
-        change_id = 0x03;
+        change_id = 0x02;
 
     struct can_frame can_msg_out;
 
