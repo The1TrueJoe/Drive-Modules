@@ -103,9 +103,6 @@ void setup() {
     openRelay(tail_light_id);
     openRelay(head_light_id);
 
-    // Announce ready to CAN bus
-    announce();
-
     // LED Off
     digitalWrite(ACT_LED, LOW);
 
@@ -249,14 +246,7 @@ void can_irq() {
         }
 
         // Clear the message buffer
-        can_msg_in.data[0] = 0;
-        can_msg_in.data[1] = 0;
-        can_msg_in.data[2] = 0;
-        can_msg_in.data[3] = 0;
-        can_msg_in.data[4] = 0;
-        can_msg_in.data[5] = 0;
-        can_msg_in.data[6] = 0;
-        can_msg_in.data[7] = 0;
+        fill_data(&can_msg_in, 0, 7);
 
         digitalWrite(COM_LED, LOW);
 
@@ -264,34 +254,18 @@ void can_irq() {
 }
 
 /**
- * @brief Get the wiper pos
+ * @brief Fill the rest of the data frame with zeroes
  * 
+ * @param frame Pointer to can frame
+ * @param start Start index (inclusive)
+ * @param end End index (inclusive)
  */
 
-void announce() {
-    digitalWrite(COM_LED, HIGH);
-
-    struct can_frame can_msg_out;
-
-    can_msg_out.can_id = CAN_ID;
-    can_msg_out.can_dlc = CAN_DLC;
-    can_msg_out.data[0] = 1;
-    can_msg_out.data[1] = 2;
-    can_msg_out.data[2] = 3;
-    can_msg_out.data[3] = 4;
-    can_msg_out.data[4] = 5;
-    can_msg_out.data[5] = 6;
-    can_msg_out.data[6] = 7;
-    can_msg_out.data[7] = 8;
-
-    for (int i = 0; i < 5; i++) {
-        can.sendMessage(&can_msg_out);
-        delay(100);
+void fill_data(can_frame* frame, uint8_t start, uint8_t end) {
+    for (int i = start; i < end+1; i++) {
+        frame->data[i] = 0;
 
     }
-    
-    digitalWrite(COM_LED, LOW);
-    
 }
 
 // --------- Pedals 
@@ -311,10 +285,7 @@ void pedal_act() {
     can_msg_out.data[0] = 0x0C;
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0E;
-    can_msg_out.data[3] = 0;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
+    fill_data(&can_msg_out, 3, 6);
     can_msg_out.data[7] = 0x02;
 
     can.sendMessage(&can_msg_out);
@@ -338,10 +309,7 @@ void pedal_deact() {
     can_msg_out.data[0] = 0x0C;
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0E;
-    can_msg_out.data[3] = 0;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
+    fill_data(&can_msg_out, 3, 6);
     can_msg_out.data[7] = 0x01;
 
     can.sendMessage(&can_msg_out);
@@ -507,9 +475,7 @@ void postRelayStatus(uint8_t id) {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x0A;
     can_msg_out.data[3] = id;
-    can_msg_out.data[4] = 0;
-    can_msg_out.data[5] = 0;
-    can_msg_out.data[6] = 0;
+    fill_data(&can_msg_out, 4, 6);
 
     if (checkRelay(id)) 
         can_msg_out.data[7] = 0x02;
