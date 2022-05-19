@@ -1,5 +1,6 @@
 # IDEs
 .vscode/
+.VSCodeCounter/
 .idea/
 
 # .ds_store
