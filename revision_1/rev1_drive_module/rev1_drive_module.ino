@@ -188,7 +188,7 @@ void loop() {
         }
     }
     
-    if (counter >= 10) {  compound_update(); counter == 0; }
+    if (counter >= 10) {  compound_update(); counter = 0; }
 
     delay(100);
     counter++;
