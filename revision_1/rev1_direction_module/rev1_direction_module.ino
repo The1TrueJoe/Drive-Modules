@@ -236,24 +236,18 @@ void can_irq() {
         }
 
         // Clear the message buffer
-        fill_data(&can_msg_in, 0, 7);
+        can_msg_in.can_id = CAN_ID;
+        can_msg_in.can_dlc = CAN_DLC;
+        can_msg_in.data[0] = 0x00;
+        can_msg_in.data[1] = 0x00;
+        can_msg_in.data[2] = 0x00;
+        can_msg_in.data[3] = 0x00;
+        can_msg_in.data[4] = 0x00;
+        can_msg_in.data[5] = 0x00;
+        can_msg_in.data[6] = 0x00;
+        can_msg_in.data[7] = 0x00;
 
         digitalWrite(ACT_LED, LOW);
-
-    }
-}
-
-/**
- * @brief Fill the rest of the data frame with zeroes
- * 
- * @param frame Pointer to can frame
- * @param start Start index (inclusive)
- * @param end End index (inclusive)
- */
-
-void fill_data(can_frame* frame, uint8_t start, uint8_t end) {
-    for (int i = start; i < end+1; i++) {
-        frame->data[i] = 0;
 
     }
 }
@@ -344,7 +338,9 @@ int read_brk_pot() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x02;
     can_msg_out.data[3] = 0x0F;
-    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[4] = 0x00;
+    can_msg_out.data[5] = 0x00;
+    can_msg_out.data[6] = 0x00;
     can_msg_out.data[7] = pot_value;
 
     can.sendMessage(&can_msg_out);
@@ -370,7 +366,9 @@ void read_brk_state() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x02;
     can_msg_out.data[3] = 0x0A;
-    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[4] = 0x00;
+    can_msg_out.data[5] = 0x00;
+    can_msg_out.data[6] = 0x00;
     can_msg_out.data[7] = digitalRead(BRK_ENABLE) + 0x01;
     
     can.sendMessage(&can_msg_out);
@@ -396,7 +394,9 @@ int read_str_pot() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0F;
-    fill_data(&can_msg_out, 4, 6);;
+    can_msg_out.data[4] = 0x00;
+    can_msg_out.data[5] = 0x00;
+    can_msg_out.data[6] = 0x00;
     can_msg_out.data[7] = pot_value;
     
     can.sendMessage(&can_msg_out);
@@ -422,7 +422,9 @@ void read_str_state() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0A;
-    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[4] = 0x00;
+    can_msg_out.data[5] = 0x00;
+    can_msg_out.data[6] = 0x00;
     can_msg_out.data[7] = digitalRead(STR_ENABLE) + 0x01;
 
     can.sendMessage(&can_msg_out);
@@ -456,7 +458,9 @@ long read_str_whl() {
     can_msg_out.data[1] = 0x0C;
     can_msg_out.data[2] = 0x01;
     can_msg_out.data[3] = 0x0E;
-    fill_data(&can_msg_out, 4, 6);
+    can_msg_out.data[4] = 0x00;
+    can_msg_out.data[5] = 0x00;
+    can_msg_out.data[6] = 0x00;
     can_msg_out.data[7] = change_id;
 
     can.sendMessage(&can_msg_out);
