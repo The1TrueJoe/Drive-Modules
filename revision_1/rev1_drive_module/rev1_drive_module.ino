@@ -32,8 +32,8 @@
 #define PEDAL_EN_HEADER 8
 
 // Releay ACT
-#define RELAY_ACT HIGH
-#define RELAY_DEACT LOW
+#define RELAY_ACT LOW
+#define RELAY_DEACT HIGH
 
 // LEDs
 #define COM_LED A0
