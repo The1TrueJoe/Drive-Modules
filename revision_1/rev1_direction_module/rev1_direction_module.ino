@@ -130,7 +130,7 @@ void loop() {
     }
 
     if (direct_wheel_feed) {
-        long pos = wheel_enc.read();
+        long pos = wheel_enc.readAndReset();
 
         if (pos > old_pos) {
             steering_motor.TurnLeft(255);
@@ -142,6 +142,8 @@ void loop() {
             steering_motor.Stop();
 
         }
+
+        delay(10);
          
     } else {
         delay(100);
@@ -243,7 +245,7 @@ void can_irq() {
                         digitalWrite(COM_LED, LOW);
 
                     }
-                    
+
                 } else if (can_msg_in.data[1] == 0x0F) {
                     if (can_msg_in.data[2] == 0x01)
                         direct_wheel_feed = true;
@@ -477,7 +479,7 @@ void read_str_state() {
 long read_str_whl() {
     digitalWrite(COM_LED, HIGH);
 
-    long pos = wheel_enc.read();
+    long pos = wheel_enc.readAndReset();
     uint8_t change_id = 0x00;
 
     if (pos > old_pos)
