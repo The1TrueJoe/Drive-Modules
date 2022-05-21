@@ -52,6 +52,7 @@ MCP2515 can(CAN_CS);
 
 // Encoder
 Encoder wheel_enc(STR_WHL_ENC, STR_WHL_ENC2);
+volatile long old_pos = -999;
 
 // Motor Controllers
 BTS7960 steering_motor(STR_ENABLE, STR_L_PWM, STR_R_PWM);
@@ -59,6 +60,9 @@ BTS7960 brake_motor(BRK_ENABLE, BRK_L_PWM, BRK_R_PWM);
 
 // Identfiy
 volatile bool identify = false;
+
+// Direct pedal feed
+volatile bool direct_wheel_feed = false;
 
 /**
  * @brief Setup function
@@ -101,6 +105,9 @@ void setup() {
 
 }
 
+// Timer counter
+int counter = 0;
+
 /**
  * @brief Periodic updates
  * 
@@ -112,22 +119,45 @@ void loop() {
         digitalWrite(COM_LED, LOW);
 
         delay(1000);
+        counter++;
 
         digitalWrite(ACT_LED, HIGH);
         digitalWrite(COM_LED, HIGH);
 
         delay(1000);
+        counter++;
 
     }
 
-    // Updates
-    digitalWrite(ACT_LED, HIGH);
-    compound_update();
-    digitalWrite(ACT_LED, LOW);
+    if (direct_wheel_feed) {
+        long pos = wheel_enc.read();
 
-    // 5 Second Delay
-    delay(5000);
+        if (pos > old_pos) {
+            steering_motor.TurnLeft(255);
+            
+        } else if (pos < old_pos) {
+            steering_motor.TurnRight(255);
 
+        } else {
+            steering_motor.Stop();
+
+        }
+         
+    } else {
+        delay(100);
+        counter++;
+
+    }
+    
+    if (counter >= 10) {
+         // Updates
+        digitalWrite(ACT_LED, HIGH);
+        compound_update();
+        digitalWrite(ACT_LED, LOW);
+
+        counter = 0;
+
+    }
 }
 
 /**
@@ -213,6 +243,13 @@ void can_irq() {
                         digitalWrite(COM_LED, LOW);
 
                     }
+                    
+                } else if (can_msg_in.data[1] == 0x0F) {
+                    if (can_msg_in.data[2] == 0x01)
+                        direct_wheel_feed = true;
+                    else if (can_msg_in.data[2] == 0x02)
+                        direct_wheel_feed = false;
+                    
                 }
               
             } else if (can_msg_in.data[0] == 0x0C) {
@@ -431,8 +468,6 @@ void read_str_state() {
     digitalWrite(COM_LED, LOW);
 
 }
-
-long old_pos = -999;
 
 /**
  * @brief Read the steering wheel change
