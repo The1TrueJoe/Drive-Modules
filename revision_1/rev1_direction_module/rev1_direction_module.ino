@@ -208,7 +208,7 @@ void can_irq() {
                             brake_motor.Disable();
                             brake_motor.Stop();
 
-                        } else if (can_msg_in.data[4] == 0x02) {
+                        } else if (can_msg_in.data[3] == 0x02) {
                             brake_motor.Enable();
 
                         } else {
