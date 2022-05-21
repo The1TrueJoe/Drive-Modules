@@ -218,9 +218,9 @@ void can_irq() {
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01) 
-                            brake_motor.TurnLeft(can_msg_in.data[4]);
-                        else if (can_msg_in.data[3] == 0x02)
                             brake_motor.TurnRight(can_msg_in.data[4]);
+                        else if (can_msg_in.data[3] == 0x02)
+                            brake_motor.TurnLeft(can_msg_in.data[4]);
                         else
                             read_brk_pot();
 
