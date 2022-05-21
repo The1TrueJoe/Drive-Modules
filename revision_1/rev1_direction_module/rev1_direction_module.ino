@@ -297,7 +297,7 @@ void compound_update() {
     can_msg_out.data[2] = 0x0C;
     can_msg_out.data[3] = 0x01;
     can_msg_out.data[4] = digitalRead(STR_ENABLE) + 0x01;
-    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[5] = can_msg_out.data[4] == 0x02 ? ( digitalRead(STR_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
     can_msg_out.data[6] = max(analogRead(STR_L_PWM), analogRead(STR_R_PWM));
     can_msg_out.data[7] = map(analogRead(STR_POT), 0, 1023, 0, 255);
 
@@ -310,7 +310,7 @@ void compound_update() {
     can_msg_out.data[2] = 0x0C;
     can_msg_out.data[3] = 0x02;
     can_msg_out.data[4] = digitalRead(BRK_ENABLE) + 0x01;
-    can_msg_out.data[5] = can_msg_out.data[3] == 0x02 ? ( digitalRead(BRK_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
+    can_msg_out.data[5] = can_msg_out.data[4] == 0x02 ? ( digitalRead(BRK_ENABLE) == HIGH ? 0x01 : 0x02 ) : 0x00;
     can_msg_out.data[6] = max(analogRead(BRK_L_PWM), analogRead(BRK_R_PWM));
     can_msg_out.data[7] = map(analogRead(BRK_POT), 0, 1023, 0, 255);
 
