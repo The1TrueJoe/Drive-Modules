@@ -242,12 +242,12 @@ void can_irq() {
                     if (can_msg_in.data[2] == 0x01) {
                         if (can_msg_in.data[3] == 0x00) {
                             accel -> increment();
-                            wiper_pos++;
+                            if (wiper_pos >= 255) { wiper_pos = 0; } else { wiper_pos++; }
 
                         } else {
                             for (int i = 0; i < can_msg_in.data[3]; i++) {
                                 accel -> increment();
-                                wiper_pos++;
+                                if (wiper_pos >= 255) { wiper_pos = 0; } else { wiper_pos++; }
 
                             }
                         }
@@ -255,12 +255,12 @@ void can_irq() {
                     } else if (can_msg_in.data[2] == 0x02) {
                         if (can_msg_in.data[3] == 0x00) {
                             accel -> decrement();
-                            wiper_pos--;
+                            if (wiper_pos <= 0) { wiper_pos = 0; } else { wiper_pos--; }
 
                         } else {
                             for (int i = 0; i < can_msg_in.data[3]; i++) {
                                 accel -> decrement();
-                                wiper_pos--;
+                                if (wiper_pos <= 0) { wiper_pos = 0; } else { wiper_pos--; }
 
                             }
                         }
@@ -340,11 +340,11 @@ void pot_write(int pos) {
     while (pos != wiper_pos) {
         if (pos > wiper_pos) {
             accel -> increment();
-            wiper_pos++;
+            if (wiper_pos >= 255) { wiper_pos = 0; } else { wiper_pos++; }
             
         } else if (pos < wiper_pos) {
             accel -> decrement();
-            wiper_pos--;
+            if (wiper_pos <= 0) { wiper_pos = 0; } else { wiper_pos--; }
             
         }
     }
