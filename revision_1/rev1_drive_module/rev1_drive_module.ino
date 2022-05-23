@@ -86,7 +86,7 @@ void setup() {
 
     // Setup
     digitalWrite(ACT_LED, HIGH);
-
+  
     // Setup CAN
     can.reset();
     can.setBitrate(CAN_125KBPS);
@@ -122,6 +122,23 @@ void setup() {
     pot_zero();
     wiper_pos = 0;
 
+    if (pedal_detect_enable) {
+        pinMode(PEDAL_POT, INPUT);
+        pinMode(PEDAL_SW, INPUT_PULLUP);
+
+        for (int i = 0; i < 4; i++) {
+            digitalWrite(PEDAL_LED, HIGH);
+            delay(200);
+            digitalWrite(PEDAL_LED, LOW);
+            delay(200);
+
+        }
+    }
+
+    // Digital Accel
+    accel = new MCP4XXX(ACCEL_CS);
+    pot_zero();
+  
     // LED Low
     digitalWrite(ACT_LED, LOW);
 
@@ -304,7 +321,7 @@ void can_irq() {
 
                 } else if (can_msg_in.data[1] == 0x0D) {
                     get_direc();
-
+                  
                 }
             }
         }

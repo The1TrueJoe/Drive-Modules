@@ -369,7 +369,7 @@ void compound_update() {
     can.sendMessage(&can_msg_out);
 
     digitalWrite(COM_LED, LOW);
-
+  
 }
 
 // --------- Pedals 

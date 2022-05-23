@@ -78,7 +78,7 @@ void setup() {
     digitalWrite(ACT_LED, HIGH);
     digitalWrite(COM_LED, HIGH);
     delay(1000);
-    digitalWrite(ACT_LED, HIGH);
+    digitalWrite(ACT_LED, LOW);
     digitalWrite(COM_LED, LOW);
     delay(200);
 
@@ -96,7 +96,7 @@ void setup() {
 
     brake_motor.Disable();
     brake_motor.Stop();
-
+  
     // LED Low
     digitalWrite(ACT_LED, LOW);
 
@@ -190,7 +190,8 @@ void can_irq() {
                         } else {
                             read_str_state();
 
-                        }
+                        } else {
+                            read_str_state();
 
                     } else if (can_msg_in.data[2] == 0x0C) {
                         if (can_msg_in.data[3] == 0x01)
@@ -198,8 +199,8 @@ void can_irq() {
                         else if (can_msg_in.data[3] == 0x02)
                             steering_motor.TurnRight(can_msg_in.data[4]);
                         else
-                            read_str_pot();
-
+                            read_str_state();
+                          
                     }
 
                 } else if (can_msg_in.data[1] == 0x02) {
@@ -215,15 +216,15 @@ void can_irq() {
                             read_brk_state();
 
                         }
-
+                       
                     } else if (can_msg_in.data[2] == 0x0C) {
-                        if (can_msg_in.data[3] == 0x01) 
-                            brake_motor.TurnRight(can_msg_in.data[4]);
-                        else if (can_msg_in.data[3] == 0x02)
+                        if (can_msg_in.data[3] == 0x01)
                             brake_motor.TurnLeft(can_msg_in.data[4]);
+                        else if (can_msg_in.data[3] == 0x02)
+                            brake_motor.TurnRight(can_msg_in.data[4]);
                         else
-                            read_brk_pot();
-
+                            read_brake_state();
+                      
                     }
                 }
 
@@ -289,6 +290,9 @@ void can_irq() {
         digitalWrite(ACT_LED, LOW);
 
     }
+    
+    digitalWrite(COM_LED, LOW);
+    
 }
 
 /**
@@ -360,11 +364,11 @@ void compound_update() {
 }
 
 /**
- * @brief Read the brake potentiometer
+ * @brief Read the brake enable state
  * 
  */
 
-int read_brk_pot() {
+void read_brk_state() {
     digitalWrite(COM_LED, HIGH);
 
     int pot_value = map(analogRead(BRK_POT), 0, 1023, 0, 255);
